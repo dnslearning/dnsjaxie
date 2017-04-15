@@ -1,3 +1,3 @@
 
 all:
-	gcc -o dnsjaxie src/*.c
+	gcc -Wall -o dnsjaxie src/*.c
