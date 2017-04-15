@@ -60,7 +60,7 @@ void dnsjaxie_listen(struct dnsjaxie_t *jax) {
     } \
   }
   
-  set(IPPROTO_IPV6, IPV6_PKTINFO, yes);
+  set(IPPROTO_IPV6, IPV6_RECVPKTINFO, yes);
   set(SOL_SOCKET, SO_RCVTIMEO, tv);
 }
 
