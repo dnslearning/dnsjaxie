@@ -45,11 +45,9 @@ void dnsjaxie_listen(struct dnsjaxie_t *jax) {
 
   // Values we set in socket options
   const int yes = 1;
-  struct timeval tv; //= { .tv_sec = 0, .tv_usec = 100000};
-  tv.tv_sec = 0;
-  tv.tv_usec = 100000;
+  const struct timeval tv = { .tv_sec = 0, .tv_usec = 100000};
 
-  #define set(level, opt, value) {\
+  #define set(level, opt, value) { \
     ok = setsockopt(jax->sock, level, opt, &(value), sizeof(value)); \
     if (ok < 0) { \
       jax->error = strerror(errno); \
@@ -59,8 +57,11 @@ void dnsjaxie_listen(struct dnsjaxie_t *jax) {
       return; \
     } \
   }
-  
+
+  // Get destination IP of UDP packet via recvmsg()
   set(IPPROTO_IPV6, IPV6_RECVPKTINFO, yes);
+
+  // Allow recvmsg() to timeout
   set(SOL_SOCKET, SO_RCVTIMEO, tv);
 }
 
@@ -71,17 +72,15 @@ void dnsjaxie_tick(struct dnsjaxie_t *jax) {
   struct msghdr msg;
   struct cmsghdr *cmsg;
   struct in6_pktinfo *packetInfo;
-  char ipString[INET6_ADDRSTRLEN];
 
   struct iovec iov[1];
 	iov[0].iov_base = &jax->buffer;
   iov[0].iov_len = sizeof(jax->buffer);
 
-  union {
-    char cmsg[CMSG_SPACE(sizeof(struct in_pktinfo))];
-    char cmsg6[CMSG_SPACE(sizeof(struct in6_pktinfo))];
-  } u;
+  char controlData[CMSG_SPACE(sizeof(struct in6_pktinfo))];
+  memset(&controlData, 0, sizeof(controlData));
 
+  char ipString[INET6_ADDRSTRLEN];
   memset(ipString, 0, sizeof(ipString));
 
   // Absurd amount of ceremony for receiving a packet
@@ -90,8 +89,8 @@ void dnsjaxie_tick(struct dnsjaxie_t *jax) {
 	msg.msg_namelen = sizeof(jax->recvAddress);
 	msg.msg_iov = iov;
 	msg.msg_iovlen = 1;
-	msg.msg_control = &u;
-  msg.msg_controllen = sizeof(u);
+	msg.msg_control = &controlData;
+  msg.msg_controllen = sizeof(controlData);
 
   // Actually receive a packet
   jax->recvSize = recvmsg(jax->sock, &msg, 0);
