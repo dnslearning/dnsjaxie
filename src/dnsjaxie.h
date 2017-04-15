@@ -62,6 +62,6 @@ void dnsjaxie_close(struct dnsjaxie_t *jax);
   jax->error = jax->errorBuffer;
 
 // Simple zero fixed size structure
-#define dnsjaxie_zero(s) memset(&(s), 0, sizeof(s))
+#define dnsjaxie_zero(s) memset(&(s), 0, sizeof(s));
 
 #endif
