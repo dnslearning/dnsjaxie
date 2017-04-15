@@ -5,20 +5,20 @@
 int main(const int argc, const char *argv[]) {
   struct dnsjaxie_t jax;
 
-  printf("Allocating dnsjaxie\n");
+  dnsjaxie_debug("Allocating dnsjaxie");
   dnsjaxie_init(&jax);
 
-  printf("Setting up signal handler\n");
+  dnsjaxie_debug("Setting up signal handler");
   void handleSignal(int signal) { jax.running = 0; }
   signal(SIGINT, handleSignal);
 
-  printf("Listening\n");
+  dnsjaxie_debug("Listening");
   dnsjaxie_listen(&jax);
 
-  printf("Starting main loop\n");
+  dnsjaxie_debug("Starting main loop");
   while (jax.running) { dnsjaxie_tick(&jax); }
 
-  printf("Cleaning up\n");
+  dnsjaxie_debug("Cleaning up");
   dnsjaxie_close(&jax);
 
   if (jax.error) {
