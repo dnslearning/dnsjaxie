@@ -11,7 +11,6 @@ void dnsjaxie_init(struct dnsjaxie_t *jax) {
   memset(&jax->buffer, 0 , sizeof(jax->buffer));
   memset(&jax->bindAddress, 0, sizeof(jax->bindAddress));
   memset(&jax->senderAddress, 0, sizeof(jax->senderAddress));
-  //memset(&jax->packetInfo, 0, sizeof(jax->packetInfo));
 }
 
 void dnsjaxie_close(struct dnsjaxie_t *jax) {
@@ -44,30 +43,58 @@ void dnsjaxie_listen(struct dnsjaxie_t *jax) {
     return;
   }
 
-  struct timeval tv;
+  // Values we set in socket options
+  const int yes = 1;
+  struct timeval tv; //= { .tv_sec = 0, .tv_usec = 100000};
   tv.tv_sec = 0;
   tv.tv_usec = 100000;
-  ok = setsockopt(jax->sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
-  if (ok < 0) {
-    jax->error = "Unable to set socket timeout";
-    return;
+  #define set(level, opt, value) {\
+    ok = setsockopt(jax->sock, level, opt, &(value), sizeof(value)); \
+    if (ok < 0) { \
+      jax->error = strerror(errno); \
+      if (!jax->error) { jax->error = "Unknown error"; } \
+      snprintf(jax->errorBuffer, sizeof(jax->errorBuffer), "Unable to set socket option (%s, %s): %s", #level, #opt, jax->error); \
+      jax->error = jax->errorBuffer; \
+      return; \
+    } \
   }
-
-  // Set the socket option saying we want extra IP header information
-  //setsockopt(jax->sock, IPPROTO_IPV6, IPV6_PKTINFO, &jax->packetInfo, sizeof(jax->packetInfo));
+  
+  set(IPPROTO_IPV6, IPV6_PKTINFO, yes);
+  set(SOL_SOCKET, SO_RCVTIMEO, tv);
 }
 
 void dnsjaxie_tick(struct dnsjaxie_t *jax) {
   if (jax->error) { jax->running = 0; }
   if (!jax->running) { return; }
 
-  jax->recvSize = recvfrom(
-    jax->sock,
-    jax->buffer, sizeof(jax->buffer),
-    0, // Flags
-    (struct sockaddr*) &jax->senderAddress, &jax->senderAddressSize
-  );
+  struct msghdr msg;
+  struct cmsghdr *cmsg;
+  struct in6_pktinfo *packetInfo;
+  char ipString[INET6_ADDRSTRLEN];
+
+  struct iovec iov[1];
+	iov[0].iov_base = &jax->buffer;
+  iov[0].iov_len = sizeof(jax->buffer);
+
+  union {
+    char cmsg[CMSG_SPACE(sizeof(struct in_pktinfo))];
+    char cmsg6[CMSG_SPACE(sizeof(struct in6_pktinfo))];
+  } u;
+
+  memset(ipString, 0, sizeof(ipString));
+
+  // Absurd amount of ceremony for receiving a packet
+  memset(&msg, 0, sizeof(msg));
+	msg.msg_name = (struct sockaddr*)&jax->recvAddress;
+	msg.msg_namelen = sizeof(jax->recvAddress);
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
+	msg.msg_control = &u;
+  msg.msg_controllen = sizeof(u);
+
+  // Actually receive a packet
+  jax->recvSize = recvmsg(jax->sock, &msg, 0);
 
   if (jax->recvSize == -1) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) { return; }
@@ -79,5 +106,18 @@ void dnsjaxie_tick(struct dnsjaxie_t *jax) {
     return;
   }
 
-  printf("Receive: %s\n", "blah");
+  for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+    printf("something\n");
+    if (cmsg->cmsg_level == IPPROTO_IPV6 && cmsg->cmsg_type == IPV6_PKTINFO) {
+      packetInfo = (struct in6_pktinfo*) CMSG_DATA(cmsg);
+      printf("got it\n");
+      inet_ntop(AF_INET6, &(packetInfo->ipi6_addr), ipString, sizeof(ipString));
+      break;
+    }
+  }
+
+
+
+
+  printf("Receive: %s\n", ipString);
 }
