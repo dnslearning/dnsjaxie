@@ -1,3 +1,3 @@
 
 all:
-	gcc -Wall -o dnsjaxie src/*.c
+	g++ -std=c++11 -Wall -o dnsjaxie src/*.cpp
