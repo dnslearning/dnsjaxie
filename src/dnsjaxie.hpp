@@ -46,22 +46,21 @@ private:
   // IP address of local network interface that received packet
   struct sockaddr_in6 recvAddress;
 public:
-  dnsjaxie();
-  ~dnsjaxie();
-
   // Clear this to ask dnsjaxie to exit (like via SIGINT)
   volatile int running = 1;
 
-  // Basic app structure
-  void config(const char *path);
+  dnsjaxie();
+  ~dnsjaxie();
+
+  void run();
+  void setOptions(const int argc, const char *argv[]);
+  void config();
   void listen();
   void tick();
   void close();
-
   bool hasError();
   void error(const char *format, ...);
   const char* getError();
-
   void debug(const char *format, ...);
 };
 

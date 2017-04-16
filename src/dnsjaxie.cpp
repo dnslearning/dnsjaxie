@@ -19,6 +19,25 @@ void dnsjaxie::close() {
   }
 }
 
+void dnsjaxie::run() {
+  config();
+  listen();
+
+  debug("Starting main loop");
+  while (running) { tick(); }
+
+  debug("Cleaning up");
+  close();
+}
+
+void dnsjaxie::setOptions(const int argc, const char *argv[]) {
+  if (argc <= 1) {
+    return;
+  }
+
+  debug("Setting options");
+}
+
 bool dnsjaxie::hasError() {
   return errorString != NULL;
 }
@@ -45,7 +64,7 @@ void dnsjaxie::debug(const char *format, ...) {
 #endif
 }
 
-void dnsjaxie::config(const char *path) {
+void dnsjaxie::config() {
 
 }
 
@@ -163,5 +182,10 @@ void dnsjaxie::tick() {
   jax_zero(ipString);
   inet_ntop(AF_INET6, &(packetInfo->ipi6_addr), ipString, sizeof(ipString));
 
-  printf("Receive: %s\n", ipString);
+  debug("Received DNS packet (%d) from %s\n", recvSize, ipString);
+
+  // TODO validate incoming DNS packet
+  // TODO fetch device by IPv6 address
+  // TODO insert device activity
+  // TODO forward DNS packet
 }
