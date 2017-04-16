@@ -22,6 +22,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>
+#include <mysql.h>
 
 // Maximum size of a UDP packet we can receive (64KB)
 #define JAX_MAX_PACKET_SIZE (1024 * 64)
@@ -45,6 +46,8 @@ private:
 
   // IP address of local network interface that received packet
   struct sockaddr_in6 recvAddress;
+
+  MYSQL *mysql = NULL;
 public:
   // Clear this to ask dnsjaxie to exit (like via SIGINT)
   volatile int running = 1;

@@ -20,6 +20,7 @@ void dnsjaxie::close() {
 }
 
 void dnsjaxie::run() {
+  debug("Using MySQL version %s", mysql_get_client_info());
   config();
   listen();
 
@@ -58,9 +59,9 @@ void dnsjaxie::debug(const char *format, ...) {
 #if JAX_DEBUG_ENABLE
   va_list argptr;
   va_start(argptr, format);
-  fprintf(stderr, format, argptr);
-  fprintf(stderr, "\n");
+  vfprintf(stderr, format, argptr);
   va_end(argptr);
+  fprintf(stderr, "\n");
 #endif
 }
 
@@ -114,6 +115,9 @@ void dnsjaxie::listen() {
     error("Unable to set SO_RCVTIMEO: %s", strerror(errno));
     return;
   }
+
+  mysql = mysql_init(NULL);
+
 }
 
 void dnsjaxie::tick() {
