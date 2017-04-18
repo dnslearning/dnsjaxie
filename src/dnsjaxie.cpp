@@ -3,32 +3,40 @@
 
 dnsjaxie::dnsjaxie() {
   running = 1;
+
+  jax_zero(bindAddress);
   bindAddress.sin6_port = htons(14222);
   bindAddress.sin6_family = AF_INET6;
   bindAddress.sin6_addr = in6addr_any;
+
+  jax_zero(realDnsAddress);
+  realDnsAddress.sin_port = htons(53);
+  realDnsAddress.sin_family = AF_INET;
+  inet_pton(AF_INET, "8.8.8.8", &realDnsAddress.sin_addr);
 }
 
 dnsjaxie::~dnsjaxie() {
-  close();
-}
-
-void dnsjaxie::close() {
   if (sock) {
-    ::close(sock);
+    close(sock);
     sock = 0;
   }
+
+  for (auto it : jobs) {
+    close(it.outboundSocket);
+  }
+
+  jobs.clear();
 }
 
 void dnsjaxie::run() {
-  debug("Using MySQL version %s", mysql_get_client_info());
   config();
+  debug("Using MySQL version %s", mysql_get_client_info());
   listen();
 
   debug("Starting main loop");
-  while (running) { tick(); }
+  while (running && !errorString) { tick(); }
 
   debug("Cleaning up");
-  close();
 }
 
 void dnsjaxie::setOptions(const int argc, const char *argv[]) {
@@ -66,7 +74,32 @@ void dnsjaxie::debug(const char *format, ...) {
 }
 
 void dnsjaxie::config() {
+  configMysql();
+}
 
+void dnsjaxie::configMysql() {
+  if (dummyMode) {
+    return;
+  }
+
+  int mysqlPort = 0;
+  const char *unixSocket = NULL;
+  unsigned long clientFlag = 0;
+
+  MYSQL *result = mysql_real_connect(
+    mysql,
+    "localhost",
+    "root", "root_pswd",
+    "dbname",
+    mysqlPort,
+    unixSocket,
+    clientFlag
+  );
+
+  if (!result) {
+    error("Unable to connect to MySQL: %s", mysql_error(mysql));
+    return;
+  }
 }
 
 void dnsjaxie::listen() {
@@ -81,6 +114,8 @@ void dnsjaxie::listen() {
     debug("Socket already exists so refusing to listen() again");
     return;
   }
+
+  FD_ZERO(&readFileDescs);
 
   // Open a UDP socket
   sock = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
@@ -116,20 +151,68 @@ void dnsjaxie::listen() {
     return;
   }
 
-  mysql = mysql_init(NULL);
+  // Add the main socket to the set of sockets
+  FD_SET(sock, &readFileDescs);
+
+
 
 }
 
 void dnsjaxie::tick() {
-  if (hasError()) {
-    debug("Exiting because of an error %s", getError());
-    running = 0;
+  while (running && !hasError()) {
+    if (!tickSelect()) {
+      break;
+    }
+  }
+}
+
+bool dnsjaxie::tickSelect() {
+  fd_set active = readFileDescs;
+  int maxFileDesc = sock;
+  for (auto job : jobs) { maxFileDesc = max(maxFileDesc, job.outboundSocket); }
+  int activity = select(maxFileDesc + 1, &active, NULL, NULL, NULL);
+
+  if (activity < 0) {
+    error("select() failed: %s", strerror(errno));
+    return false;
   }
 
-  if (!running) {
-    return;
+  if (FD_ISSET(sock, &active)) {
+    recvRequestAll();
   }
 
+  std::list<struct Job>::iterator it;
+
+  for (it = jobs.begin(); it != jobs.end(); ++it) {
+    struct Job job = *it;
+    bool isActive = FD_ISSET(job.outboundSocket, &active);
+    bool isTimeout = false;
+
+    if (isActive || isTimeout) {
+      if (isActive) {
+        recvResponse(job);
+      }
+
+      debug("Closing socket");
+      close(job.outboundSocket);
+      it = jobs.erase(it);
+    }
+  }
+
+  return activity > 0;
+}
+
+// Parse all incoming DNS requests
+void dnsjaxie::recvRequestAll() {
+  while (running) {
+    if (!recvRequest()) {
+      return;
+    }
+  }
+}
+
+// Parse a single DNS request (returns false if nothing was done)
+bool dnsjaxie::recvRequest() {
   // Memory to store the "control data"
   char controlData[CMSG_SPACE(sizeof(struct in6_pktinfo))];
   jax_zero(controlData);
@@ -138,31 +221,34 @@ void dnsjaxie::tick() {
   char recvBuffer[JAX_MAX_PACKET_SIZE];
   jax_zero(recvBuffer);
 
+  struct sockaddr_in6 senderAddress;
+  jax_zero(senderAddress)
+
   // Absurd amount of ceremony for receiving a packet
   struct msghdr msg;
   jax_zero(msg);
-	msg.msg_name = (struct sockaddr*)&recvAddress;
-	msg.msg_namelen = sizeof(recvAddress);
+  msg.msg_name = (struct sockaddr*)&senderAddress;
+  msg.msg_namelen = sizeof(senderAddress);
   struct iovec iov[1];
   iov[0].iov_base = &recvBuffer;
   iov[0].iov_len = sizeof(recvBuffer);
-	msg.msg_iov = iov;
-	msg.msg_iovlen = 1;
-	msg.msg_control = &controlData;
+  msg.msg_iov = iov;
+  msg.msg_iovlen = 1;
+  msg.msg_control = &controlData;
   msg.msg_controllen = sizeof(controlData);
 
   // Actually receive a packet
-  int recvSize = recvmsg(sock, &msg, 0);
+  int recvSize = recvmsg(sock, &msg, MSG_DONTWAIT);
 
   if (recvSize == 0) {
     // Skip empty packets entirely
-    return;
+    return false;
   } else if (recvSize == -1) {
     if (errno != EAGAIN && errno != EWOULDBLOCK) {
       error("Socket error after recvmsg: %s", strerror(errno));
     }
 
-    return;
+    return false;
   }
 
   struct in6_pktinfo *packetInfo = NULL;
@@ -176,20 +262,110 @@ void dnsjaxie::tick() {
     }
   }
 
-  // Cannot determine incoming IP address
   if (!packetInfo) {
-    debug("Cannot determine incoming IP address");
+    debug("Cannot determine destination IP address");
+    return false;
+  }
+
+  recvRequestPacket(recvBuffer, recvSize, senderAddress, packetInfo->ipi6_addr);
+  return true;
+}
+
+// Receive a DNS packet from a client
+void dnsjaxie::recvRequestPacket(
+  char *buffer, int bufferSize,
+  struct sockaddr_in6& senderAddress, struct in6_addr& recvAddress
+) {
+  char ipString[INET6_ADDRSTRLEN];
+  jax_zero(ipString);
+
+  inet_ntop(AF_INET6, &recvAddress, ipString, sizeof(ipString));
+  debug("Received DNS packet (%d) for address %s\n", bufferSize, ipString);
+
+  // Keep track of the DNS request
+  Job job;
+  job.when = time(NULL);
+  job.clientAddress = senderAddress;
+  job.bindAddress = randomAddress();
+  job.outboundSocket = createOutboundSocket(job.bindAddress);
+
+  // Send the packet to the real DNS server
+  if (!forwardPacket(job.outboundSocket, buffer, bufferSize)) {
+    debug("Unable to forward DNS packet");
     return;
   }
 
-  char ipString[INET6_ADDRSTRLEN];
-  jax_zero(ipString);
-  inet_ntop(AF_INET6, &(packetInfo->ipi6_addr), ipString, sizeof(ipString));
-
-  debug("Received DNS packet (%d) from %s\n", recvSize, ipString);
+  // Add to job list and register for select()
+  jobs.push_back(job);
+  FD_SET(job.outboundSocket, &readFileDescs);
 
   // TODO validate incoming DNS packet
   // TODO fetch device by IPv6 address
   // TODO insert device activity
-  // TODO forward DNS packet
+}
+
+// Creates an IPv4 socket bound to a random port on any address
+int dnsjaxie::createOutboundSocket(struct sockaddr_in& addr) {
+  int outboundSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+
+  if (outboundSocket <= 0) {
+    error("Unable to open an outbound socket");
+    return 0;
+  }
+
+  int ok = bind(outboundSocket, (struct sockaddr*)&addr, sizeof(addr));
+
+  if (ok < 0) {
+    close(outboundSocket);
+    error("Unable to bind socket to port %d", ntohs(addr.sin_port));
+    return 0;
+  }
+
+  return outboundSocket;
+}
+
+// Send a DNS packet to the real server like Google
+bool dnsjaxie::forwardPacket(int outboundSocket, const char *buffer, int bufferSize) {
+  debug("Forwarding a packet (%d bytes)", bufferSize);
+
+  return sendto(
+    outboundSocket,
+    buffer, bufferSize,
+    0,
+    (struct sockaddr*)&realDnsAddress, sizeof(realDnsAddress)
+  ) >= 0;
+}
+
+// Generate a random port number
+sockaddr_in dnsjaxie::randomAddress() {
+  sockaddr_in addr;
+  jax_zero(addr);
+  addr.sin_port = htons(14223 + (rand() & 0xFFF));
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  return addr;
+}
+
+void dnsjaxie::recvResponse(Job& job) {
+  debug("Received a response from the real server");
+
+  char buffer[JAX_MAX_PACKET_SIZE];
+  jax_zero(buffer);
+
+  int bufferSize = recv(job.outboundSocket, buffer, sizeof(buffer), MSG_DONTWAIT);
+
+  if (bufferSize == -1) {
+    debug("Unable to read socket: %s", strerror(errno));
+    return;
+  } else if (bufferSize == 0) {
+    debug("Real DNS server sent us an empty packet");
+    return;
+  }
+
+  sendto(
+    sock,
+    buffer, bufferSize,
+    0,
+    (struct sockaddr*)&job.clientAddress, sizeof(job.clientAddress)
+  );
 }
