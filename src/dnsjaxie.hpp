@@ -99,6 +99,7 @@ public:
 
   // Main loop (runs until error o)
   void run();
+  bool isRunning();
 
   // A single tick in the main loop
   void tick();

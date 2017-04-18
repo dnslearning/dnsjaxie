@@ -34,7 +34,7 @@ void dnsjaxie::run() {
   listen();
 
   debug("Starting main loop");
-  while (running && !errorString) { tick(); }
+  while (isRunning()) { tick(); }
 
   debug("Cleaning up");
 }
@@ -49,6 +49,10 @@ void dnsjaxie::setOptions(const int argc, const char *argv[]) {
 
 bool dnsjaxie::hasError() {
   return errorString != NULL;
+}
+
+bool dnsjaxie::isRunning() {
+  return running && !hasError();
 }
 
 const char* dnsjaxie::getError() {
@@ -153,13 +157,10 @@ void dnsjaxie::listen() {
 
   // Add the main socket to the set of sockets
   FD_SET(sock, &readFileDescs);
-
-
-
 }
 
 void dnsjaxie::tick() {
-  while (running && !hasError()) {
+  while (isRunning()) {
     if (!tickSelect()) {
       break;
     }
@@ -204,7 +205,7 @@ bool dnsjaxie::tickSelect() {
 
 // Parse all incoming DNS requests
 void dnsjaxie::recvRequestAll() {
-  while (running) {
+  while (isRunning()) {
     if (!recvRequest()) {
       return;
     }
