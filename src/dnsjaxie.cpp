@@ -98,27 +98,77 @@ void dnsjaxie::debug(const char *format, ...) {
 }
 
 void dnsjaxie::config() {
-  configMysql();
+  if (!configFile()) { return; }
+  if (!configMysql()) { return; }
 }
 
-void dnsjaxie::configMysql() {
-  if (dummyMode) {
+bool dnsjaxie::configFile() {
+  FILE *fp = fopen(configPath.c_str(), "r");
+
+  if (!fp) {
+    error("Unable to open config file %s", configPath.c_str());
+    return false;
+  }
+
+  char lineBuffer[1024];
+  jax_zero(lineBuffer);
+
+  while (!feof(fp)) {
+    configFileLine(fgets(lineBuffer, sizeof(lineBuffer), fp));
+  }
+
+  fclose(fp);
+  fp = NULL;
+  return true;
+}
+
+void dnsjaxie::configFileLine(const char *line) {
+  if (line == NULL || strlen(line) <= 0) {
     return;
   }
 
+  char keyBuffer[1024];
+  char valueBuffer[1024];
+  jax_zero(keyBuffer);
+  jax_zero(valueBuffer);
+
+  int matched = sscanf(line, "%1023s %1023s", keyBuffer, valueBuffer);
+
+  if (matched < 2) {
+    error("Unable to load config line (%d) %s", matched, line);
+    return;
+  }
+
+  if (strcmp(keyBuffer, "dbuser") == 0) {
+    dbUser = std::string(valueBuffer);
+  } else if (strcmp(keyBuffer, "dbpass") == 0) {
+    dbPass = std::string(valueBuffer);
+  } else if (strcmp(keyBuffer, "dbname") == 0) {
+    dbName = std::string(valueBuffer);
+  } else if (strcmp(keyBuffer, "dbhost")) {
+    dbHost = std::string(valueBuffer);
+  } else {
+    debug("Unknown config option: %s", keyBuffer);
+  }
+}
+
+bool dnsjaxie::configMysql() {
   sqlDriver = get_driver_instance();
 
   if (!sqlDriver) {
     error("Unable to load SQL driver");
-    return;
+    return false;
   }
 
   try {
-    sqlConnection = sqlDriver->connect("tcp://127.0.0.1:3306", "root", "root");
+    sqlConnection = sqlDriver->connect(dbHost, dbUser, dbPass);
+    sqlConnection->setSchema(dbName);
   } catch (sql::SQLException &e) {
     error("Unable to connect to MySQL: %s", e.what());
-    return;
+    return false;
   }
+
+  return true;
 }
 
 void dnsjaxie::listen() {
