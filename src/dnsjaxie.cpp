@@ -30,7 +30,6 @@ dnsjaxie::~dnsjaxie() {
 
 void dnsjaxie::run() {
   config();
-  debug("Using MySQL version %s", mysql_get_client_info());
   listen();
 
   debug("Starting main loop");
@@ -86,22 +85,17 @@ void dnsjaxie::configMysql() {
     return;
   }
 
-  int mysqlPort = 0;
-  const char *unixSocket = NULL;
-  unsigned long clientFlag = 0;
+  sqlDriver = get_driver_instance();
 
-  MYSQL *result = mysql_real_connect(
-    mysql,
-    "localhost",
-    "root", "root_pswd",
-    "dbname",
-    mysqlPort,
-    unixSocket,
-    clientFlag
-  );
+  if (!sqlDriver) {
+    error("Unable to load SQL driver");
+    return;
+  }
 
-  if (!result) {
-    error("Unable to connect to MySQL: %s", mysql_error(mysql));
+  try {
+    sqlConnection = sqlDriver->connect("tcp://127.0.0.1:3306", "root", "root");
+  } catch (sql::SQLException &e) {
+    error("Unable to connect to MySQL: %s", e.what());
     return;
   }
 }
@@ -170,7 +164,7 @@ void dnsjaxie::tick() {
 bool dnsjaxie::tickSelect() {
   fd_set active = readFileDescs;
   int maxFileDesc = sock;
-  for (auto job : jobs) { maxFileDesc = max(maxFileDesc, job.outboundSocket); }
+  for (auto job : jobs) { maxFileDesc = std::max(maxFileDesc, job.outboundSocket); }
   int activity = select(maxFileDesc + 1, &active, NULL, NULL, NULL);
 
   if (activity < 0) {
@@ -281,7 +275,7 @@ void dnsjaxie::recvRequestPacket(
   jax_zero(ipString);
 
   inet_ntop(AF_INET6, &recvAddress, ipString, sizeof(ipString));
-  debug("Received DNS packet (%d) for address %s\n", bufferSize, ipString);
+  debug("Received DNS packet (%d) for address %s", bufferSize, ipString);
 
   // Keep track of the DNS request
   Job job;

@@ -12,6 +12,7 @@
 #endif
 
 #include <list>
+#include <algorithm>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -25,14 +26,15 @@
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>
-#include <mysql.h>
 #include <time.h>
+
+// MySQL and libs
+#include <mysql_connection.h>
+#include <driver.h>
 
 // Maximum size of a UDP packet we can receive (4KB) while the DNS
 // spec itself is limited to 512 bytes
 #define JAX_MAX_PACKET_SIZE (1024 * 4)
-
-#define JAX_ERROR_BUFFER_SIZE (1024)
 
 struct Job {
   struct sockaddr_in6 clientAddress;
@@ -41,15 +43,11 @@ struct Job {
   int when;
 };
 
-#ifndef max
-#define max(a, b) ((b > a) ? b : a)
-#endif
-
 class dnsjaxie {
 private:
   // Any error that has occurred and a spare buffer to print more complex errors
   const char *errorString = NULL;
-  char errorBuffer[JAX_ERROR_BUFFER_SIZE];
+  char errorBuffer[1024];
 
   // UDP socket and a 64KB receive buffer
   int sock = 0;
@@ -70,7 +68,10 @@ private:
   struct sockaddr_in realDnsAddress;
 
   // Connection to MySQL server
-  MYSQL *mysql = NULL;
+  sql::Driver *sqlDriver;
+  sql::Connection *sqlConnection;
+  //sql::Statement *sqlStatement;
+  //sql::ResultSet *sqlResultSet;
 
   bool dummyMode = true;
 public:
