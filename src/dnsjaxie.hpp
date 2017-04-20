@@ -12,6 +12,7 @@
 #endif
 
 #include <list>
+#include <string>
 #include <algorithm>
 
 #include <stdarg.h>
@@ -68,12 +69,16 @@ private:
   struct sockaddr_in realDnsAddress;
 
   // Connection to MySQL server
+  std::string dbName = "dnsjaxie";
+  std::string dbUser = "root";
+  std::string dbPass = "";
+  std::string dbHost = "localhost";
   sql::Driver *sqlDriver;
   sql::Connection *sqlConnection;
   //sql::Statement *sqlStatement;
   //sql::ResultSet *sqlResultSet;
 
-  bool dummyMode = true;
+  std::string configPath = "/etc/dnsjaxie.conf";
 public:
   // Clear this to ask dnsjaxie to exit (like via SIGINT)
   volatile int running = 1;
@@ -89,11 +94,13 @@ public:
   void debug(const char *format, ...);
 
   // Accept options from command line
-  void setOptions(const int argc, const char *argv[]);
+  void setOptions(const int argc, char* const argv[]);
 
   // Load configuration from /etc/dnsjaxie.conf
   void config();
-  void configMysql();
+  bool configFile();
+  void configFileLine(const char *line);
+  bool configMysql();
 
   // Open socket and start listening
   void listen();
