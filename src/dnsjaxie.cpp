@@ -38,12 +38,33 @@ void dnsjaxie::run() {
   debug("Cleaning up");
 }
 
-void dnsjaxie::setOptions(const int argc, const char *argv[]) {
+void dnsjaxie::setOptions(const int argc, char* const argv[]) {
   if (argc <= 1) {
     return;
   }
 
-  debug("Setting options");
+  int c;
+
+  while ((c = getopt (argc, argv, "f:")) != -1) {
+    switch (c) {
+    case 'f':
+      configPath = std::string(optarg);
+      break;
+    case '?':
+      if (optopt == 'f') {
+        error("Option -f needs an argument");
+      } else if (isprint (optopt)) {
+        error("Unknown option '-%c'", optopt);
+      } else {
+        error("Unknown option %x (hex)", optopt);
+      }
+
+      return;
+    default:
+      error("There was a problem parsing options");
+      return;
+    }
+  }
 }
 
 bool dnsjaxie::hasError() {
