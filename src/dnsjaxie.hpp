@@ -75,7 +75,7 @@ private:
   std::string dbHost = "localhost";
   sql::Driver *sqlDriver;
   sql::Connection *sqlConnection;
-  //sql::Statement *sqlStatement;
+  sql::Statement *sqlFindIpStatement;
   //sql::ResultSet *sqlResultSet;
 
   std::string configPath = "/etc/dnsjaxie.conf";
