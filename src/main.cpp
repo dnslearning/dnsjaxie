@@ -7,7 +7,7 @@ void handleSignal(int signal) {
   app.running = 0;
 }
 
-int main(const int argc, const char *argv[]) {
+int main(const int argc, char* const argv[]) {
   signal(SIGINT, handleSignal);
   app.setOptions(argc, argv);
   app.run();
