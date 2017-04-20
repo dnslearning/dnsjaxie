@@ -148,7 +148,7 @@ void dnsjaxie::configFileLine(const char *line) {
   } else if (strcmp(keyBuffer, "dbhost")) {
     dbHost = std::string(valueBuffer);
   } else {
-    debug("Unknown config option: %s", keyBuffer);
+    error("Unknown config option: %s", keyBuffer);
   }
 }
 
