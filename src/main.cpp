@@ -1,19 +1,20 @@
 
-#include "dnsjaxie.hpp"
+#include "App.hpp"
 
-static class dnsjaxie app;
+static class App app;
 
 void handleSignal(int signal) {
-  app.running = 0;
+  app.stop();
 }
 
 int main(const int argc, char* const argv[]) {
   signal(SIGINT, handleSignal);
   app.setOptions(argc, argv);
-  app.run();
 
-  if (app.hasError()) {
-    fprintf(stderr, "ERROR: %s\n", app.getError());
+  try {
+    app.run();
+  } catch (std::exception &e) {
+    fprintf(stderr, "ERROR: %s\n", e.what());
     return 1;
   }
 
