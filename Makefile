@@ -2,10 +2,10 @@
 all:
 	g++ -std=c++11 -Wall \
 		-I/usr/include/cppconn \
-		$(shell pkg-config --cflags mysqlclient) \
+		$(shell mysql_config --cflags) \
 		-o dnsjaxie src/*.cpp \
 		-lmysqlcppconn \
-		$(shell pkg-config --libs mysqlclient)
+		$(shell mysql_config --libs)
 
-build-deps:
-	sudo apt install g++ libmysqlclient-dev libmysqlcppconn-dev
+clean:
+	rm dnsjaxie
