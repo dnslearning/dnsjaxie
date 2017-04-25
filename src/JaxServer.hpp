@@ -12,10 +12,10 @@ private:
   std::list<class JaxClient> clients;
   int sock;
   fd_set readFileDescs;
-  class JaxModel model;
-  class JaxParser parser;
 public:
   sockaddr_in6 bindAddress;
+  class JaxModel model;
+  class JaxParser parser;
 
   JaxServer();
   ~JaxServer();
@@ -30,6 +30,7 @@ public:
   void recvQuestion(struct JaxPacket& packet, struct sockaddr_in6& senderAddress, struct in6_addr& recvAddress);
   void sendResponse(const char *buffer, unsigned int bufferSize, struct sockaddr_in6& addr);
   void sendFakeResponse(struct sockaddr_in6& addr);
+  bool isAccessEnabled(struct sockaddr_in6& addr);
   int createOutboundSocket();
   void removeSocket(int outboundSocket);
 };

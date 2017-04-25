@@ -12,29 +12,43 @@ struct JaxDnsHeader {
   unsigned short arcount;
 } __attribute__ ((packed));
 
-struct JaxDnsQuestion {
+struct JaxDnsQuestionHeader {
   unsigned short qtype;
   unsigned short qclass;
 } __attribute__ ((packed));
 
-struct JaxDnsAnswer {
+struct JaxDnsQuestion {
+  struct JaxDnsQuestionHeader header;
+  std::string domain;
+};
+
+struct JaxDnsAnswerHeader {
   unsigned short atype;
   unsigned short aclass;
   unsigned int ttl;
   unsigned short dataLen;
 } __attribute__ ((packed));
 
+struct JaxDnsAnswer {
+  struct JaxDnsAnswerHeader header;
+  std::string domain;
+};
+
 class JaxParser {
 public:
   struct JaxDnsHeader header;
-  struct JaxDnsAnswer answer;
-
-  std::list<std::string> domains;
+  //std::list<std::string> domains;
+  std::list<struct JaxDnsQuestion> questions;
+  std::list<struct JaxDnsAnswer> answers;
 
   bool decode(struct JaxPacket& p);
-  bool decodeQuestion(struct JaxPacket& p);
+  void decodeQuestion(struct JaxPacket& p);
+  void decodeAnswer(struct JaxPacket& p);
   bool encode(struct JaxPacket& p);
+  void encodeQuestion(struct JaxPacket& p, struct JaxDnsQuestion& question);
+  void encodeAnswer(struct JaxPacket& p, struct JaxDnsAnswer& answer);
 
+  bool isEmpty();
   bool isResponse() { return header.flags & 0b1; }
   unsigned int getOpcode() { return (header.flags >> 1) & 0b11; }
   bool isAuthAnswer() { return (header.flags >> 5) & 0b1; }
@@ -48,8 +62,10 @@ public:
   static unsigned char readByte(struct JaxPacket& p);
   static unsigned char peekByte(struct JaxPacket p);
   static void readData(struct JaxPacket& p, void *buffer, unsigned int len);
+  static void writeData(struct JaxPacket& p, void *buffer, unsigned int len);
   static std::string readString(struct JaxPacket& p);
-  static std::string peekString(struct JaxPacket p, unsigned int pos);
-  static std::string readLabel(struct JaxPacket& p);
-  static std::string parseString(struct JaxPacket& p);
+  static std::string readStringLiteral(struct JaxPacket& p);
+  static std::string peekStringLiteral(struct JaxPacket p, unsigned int pos);
+  static std::string readStringCompressed(struct JaxPacket& p);
+  static void writeString(struct JaxPacket& p, std::string str);
 };

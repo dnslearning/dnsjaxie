@@ -135,10 +135,10 @@ bool JaxServer::recvQuestion() {
     return false;
   }
 
-  for (auto s : parser.domains) {
-    Jax::debug("Domain: %s", s.c_str());
+  for (auto q : parser.questions) {
+    Jax::debug("Domain: %s", q.domain.c_str());
   }
-  
+
   if (parser.isResponse()) {
     Jax::debug("Skipping DNS packet on inbound socket because isResponse");
     return false;
@@ -152,7 +152,7 @@ void JaxServer::recvQuestion(
   struct JaxPacket& p,
   struct sockaddr_in6& senderAddress, struct in6_addr& recvAddress
 ) {
-  if (!model.fetch(recvAddress)) {
+  if (!isAccessEnabled(senderAddress)) {
     sendFakeResponse(senderAddress);
     return;
   }
@@ -165,8 +165,41 @@ void JaxServer::recvQuestion(
   FD_SET(client.outboundSocket, &readFileDescs);
 }
 
-void JaxServer::sendFakeResponse(struct sockaddr_in6& addr) {
+bool JaxServer::isAccessEnabled(struct sockaddr_in6& addr) {
+  return model.fetch(addr.sin6_addr) && model.learnMode <= 0;
+}
 
+void JaxServer::sendFakeResponse(struct sockaddr_in6& addr) {
+  char buffer[1024];
+  struct JaxPacket packet;
+  packet.input = buffer;
+  packet.inputSize = sizeof(buffer);
+  packet.pos = 0;
+
+  parser.header = {};
+  parser.header.id = (unsigned short)(rand() & 0xFFFF);
+  parser.header.flags = 0b1;
+  parser.header.ancount = 1;
+
+  struct JaxDnsAnswer answer = {};
+  answer.domain = "test.com";
+  parser.answers.push_back(answer);
+
+  if (!parser.encode(packet)) {
+    Jax::debug("Failed to encode a fake response packet");
+    return;
+  }
+
+  int ok = sendto(
+    sock,
+    buffer, packet.pos,
+    MSG_DONTWAIT,
+    (sockaddr*)&addr, sizeof(addr)
+  );
+
+  if (ok < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+    throw Jax::socketError("Cannot send fake response packet");
+  }
 }
 
 int JaxServer::createOutboundSocket() {

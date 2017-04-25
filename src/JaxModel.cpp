@@ -6,7 +6,7 @@ void JaxModel::prepare() {
     sqlDriver = get_driver_instance();
     if (!sqlDriver) { throw std::runtime_error("Unable to load SQL driver"); }
   }
-  
+
   if (!sqlConnection) {
     sqlConnection = sqlDriver->connect(host, user, pass);
     if (!sqlConnection) { throw std::runtime_error("No database connection"); }
@@ -22,7 +22,7 @@ void JaxModel::prepare() {
   sqlInsertActivity = sqlInsertActivity ? sqlInsertActivity : sqlConnection->prepareStatement(
     "insert into `device_activity` set "
     " `device_id` = ?, "
-    " `time` = (unix_timestamp() / 60), "
+    " `time` = (unix_timestamp() / 60) * 60, "
     " `dns` = 1, "
     " `learnMode` = ? "
     "on duplicate key update `dns` = `dns` + 1"
@@ -52,6 +52,7 @@ bool JaxModel::fetch(struct in6_addr& addr) {
   if (!sqlFetch->execute()) { return false; }
   sql::ResultSet *resultSet = sqlFetch->getResultSet();
   if (!resultSet) { return false; }
+  if (!resultSet->next()) { delete resultSet; return false; }
   deviceId = resultSet->getInt(1);
   learnMode = resultSet->getInt(2);
   delete resultSet;

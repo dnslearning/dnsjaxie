@@ -14,3 +14,20 @@ void Jax::debug(const char *format, ...) {
 std::runtime_error Jax::socketError(std::string reason) {
   return std::runtime_error(reason);
 }
+
+// http://stackoverflow.com/a/236803/226526
+template<typename Out>
+void Jax::split(const std::string &s, char delim, Out result) {
+    std::stringstream ss;
+    ss.str(s);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+        *(result++) = item;
+    }
+}
+
+std::vector<std::string> Jax::split(const std::string &s, char delim) {
+    std::vector<std::string> elems;
+    split(s, delim, std::back_inserter(elems));
+    return elems;
+}

@@ -5,8 +5,13 @@
 
 #include <exception>
 #include <stdexcept>
+#include <utility>
 #include <string>
 #include <list>
+#include <vector>
+#include <iterator>
+#include <fstream>
+#include <sstream>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -38,13 +43,16 @@ class Jax {
 public:
   static std::runtime_error socketError(std::string reason);
   static void debug(const char *format, ...);
+
+  template<typename Out>
+  static void split(const std::string &s, char delim, Out result);
+  static std::vector<std::string> split(const std::string &s, char delim);
 };
 
 struct JaxPacket {
-  const char *input;
+  char *input;
   unsigned int inputSize;
   unsigned int pos;
 };
-
 
 #define jax_zero(s) memset(&(s), 0, sizeof(s));

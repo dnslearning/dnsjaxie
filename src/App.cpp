@@ -1,15 +1,8 @@
 
 #include "App.hpp"
 
-App::App() {
-
-}
-
-App::~App() {
-
-}
-
 void App::run() {
+  configure();
   server.listen();
 
   while (isRunning()) {
@@ -22,5 +15,46 @@ void App::tick() {
 }
 
 void App::setOptions(int argc, char* const argv[]) {
+  int c;
 
+  while ((c = getopt (argc, argv, "f:")) != -1)
+    switch (c) {
+    case 'f':
+      configPath = optarg;
+      break;
+    case '?':
+      if (optopt == 'f') {
+        fprintf(stderr, "Missing argument (file) with option -f\n");
+      } else {
+        fprintf(stderr, "Unknown option -%c\n", optopt);
+      }
+
+      break;
+    default:
+      throw std::runtime_error("Unknown option during parsing");
+  }
+}
+
+void App::configure() {
+  std::ifstream conf(configPath);
+  std::string key = "", value = "";
+  // TODO better config file loading
+
+  while (conf >> key >> value) {
+    configure(key, value);
+  };
+}
+
+void App::configure(std::string key, std::string value) {
+  if (key == "dbuser") {
+    server.model.user = value;
+  } else if (key == "dbpass") {
+    server.model.pass = value;
+  } else if (key == "dbname") {
+    server.model.name = value;
+  } else if (key == "dbhost") {
+    server.model.host = value;
+  } else {
+    Jax::debug("Unknown config key '%s'", key.c_str());
+  }
 }

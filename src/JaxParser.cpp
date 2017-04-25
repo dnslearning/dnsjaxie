@@ -1,8 +1,14 @@
 
 #include "JaxParser.hpp"
 
+bool JaxParser::isEmpty() {
+  return header.qdcount <= 0 && header.ancount <= 0 && header.nscount <= 0 && header.arcount <= 0;
+}
+
 bool JaxParser::decode(struct JaxPacket& p) {
-  domains.clear();
+  questions.clear();
+  answers.clear();
+
   readData(p, &header, sizeof(header));
   header.id = ntohs(header.id);
 
@@ -20,40 +26,33 @@ bool JaxParser::decode(struct JaxPacket& p) {
   header.ancount = ntohs(header.ancount);
   Jax::debug("qdcount = %d, ancount = %d", header.qdcount, header.ancount);
 
-  if (
-    header.qdcount <= 0 &&
-    header.ancount <= 0 &&
-    header.nscount <= 0 &&
-    header.arcount <= 0
-  ) {
-    Jax::debug("DNS packet has nothing in it");
+  if (isEmpty()) {
+    Jax::debug("Refusing to decode empty DNS packet");
     return false;
   }
 
-  for (int i=0; i < header.qdcount; i++) {
-    if (!decodeQuestion(p)) { return false; }
-  }
+  for (int i=0; i < header.qdcount; i++) { decodeQuestion(p); }
+  for (int i=0; i < header.ancount; i++) { decodeAnswer(p); }
 
   return true;
 }
 
-bool JaxParser::decodeQuestion(struct JaxPacket& p) {
-  std::string domain = parseString(p);
+void JaxParser::decodeQuestion(struct JaxPacket& p) {
   struct JaxDnsQuestion question;
-  readData(p, &question, sizeof(question));
-
+  question.domain = readString(p);
+  readData(p, &question.header, sizeof(question.header));
   // TODO do we care if they are asking for a specific type of record like MX?
-
-  if (question.qclass != 1 && question.qclass != 255) {
-    Jax::debug("Unknown DNS question class %d", question.qclass);
-    return false;
-  }
-
-  domains.push_back(domain);
-  return true;
+  questions.push_back(question);
 }
 
-std::string JaxParser::parseString(struct JaxPacket& p) {
+void JaxParser::decodeAnswer(struct JaxPacket& p) {
+  struct JaxDnsAnswer answer;
+  answer.domain = readString(p);
+  readData(p, &answer.header, sizeof(answer.header));
+  answers.push_back(answer);
+}
+
+std::string JaxParser::readString(struct JaxPacket& p) {
   std::string str = "";
 
   do {
@@ -65,17 +64,23 @@ std::string JaxParser::parseString(struct JaxPacket& p) {
     }
 
     if (len & 0b11000000) {
-      str += readLabel(p);
+      str += readStringCompressed(p);
     } else {
       if (!str.empty()) { str += '.'; }
-      str += readString(p);
+      str += readStringLiteral(p);
     }
   } while (1);
 
   return str;
 }
 
-std::string JaxParser::readString(struct JaxPacket& p) {
+void JaxParser::readData(struct JaxPacket& p, void* buffer, unsigned int len) {
+  if ((p.pos + len) >= p.inputSize) { throw std::runtime_error("Attempt to read outside DNS packet"); }
+  memcpy(buffer, p.input + p.pos, len);
+  p.pos += len;
+}
+
+std::string JaxParser::readStringLiteral(struct JaxPacket& p) {
   unsigned char len = readByte(p);
   if (len > 63) { throw std::runtime_error("DNS strings must be 63 chars or less"); }
   char chunk[64];
@@ -84,24 +89,18 @@ std::string JaxParser::readString(struct JaxPacket& p) {
   return chunk;
 }
 
-void JaxParser::readData(struct JaxPacket& p, void* buffer, unsigned int len) {
-  if ((p.pos + len) >= p.inputSize) { throw std::runtime_error("DNS string goes outside buffer"); }
-  memcpy(buffer, p.input + p.pos, len);
-  p.pos += len;
-}
-
-std::string JaxParser::peekString(struct JaxPacket p, unsigned int pos) {
+std::string JaxParser::peekStringLiteral(struct JaxPacket p, unsigned int pos) {
   p.pos = pos;
-  return readString(p);
+  return readStringLiteral(p);
 }
 
-std::string JaxParser::readLabel(struct JaxPacket& p) {
+std::string JaxParser::readStringCompressed(struct JaxPacket& p) {
   unsigned short offset = readByte(p);
   if ((offset & 0b11000000) != 0b11000000) { throw std::runtime_error("DNS labels should have 2 most significant bits set"); }
   offset = ntohs((offset & 0b00111111) | (readByte(p) << 6));
   Jax::debug("offset = %d", offset);
   if (offset > p.pos) { throw std::runtime_error("DNS labels must point backwards"); }
-  return peekString(p, offset);
+  return peekStringLiteral(p, offset);
 }
 
 unsigned char JaxParser::readByte(struct JaxPacket& p) {
@@ -114,7 +113,37 @@ unsigned char JaxParser::peekByte(struct JaxPacket p) {
 }
 
 bool JaxParser::encode(struct JaxPacket& p) {
-  //memset(buffer, 0, bufferSize);
-  //memcpy(buffer, &header, sizeof(header));
-  return false;
+  if (isEmpty()) {
+    Jax::debug("Refusing to encode empty DNS packet");
+    return false;
+  }
+
+  header.qdcount = htons(questions.size());
+  header.ancount = htons(answers.size());
+  header.nscount = 0;
+  header.arcount = 0;
+  writeData(p, &header, sizeof(header));
+
+  for (auto question : questions) { encodeQuestion(p, question); }
+  for (auto answer : answers) { encodeAnswer(p, answer); }
+
+  return true;
+}
+
+void JaxParser::encodeQuestion(struct JaxPacket& p, struct JaxDnsQuestion& question) {
+
+}
+
+void JaxParser::encodeAnswer(struct JaxPacket& p, struct JaxDnsAnswer& answer) {
+
+}
+
+void JaxParser::writeString(struct JaxPacket& p, std::string str) {
+
+}
+
+void JaxParser::writeData(struct JaxPacket& p, void *buffer, unsigned int len) {
+  if ((p.pos + len) >= p.inputSize) { throw std::runtime_error("Attempt to write outside DNS packet"); }
+  memcpy(p.input + p.pos, buffer, len);
+  p.pos += len;
 }
