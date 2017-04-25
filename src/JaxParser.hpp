@@ -62,10 +62,12 @@ public:
   static unsigned char readByte(struct JaxPacket& p);
   static unsigned char peekByte(struct JaxPacket p);
   static void readData(struct JaxPacket& p, void *buffer, unsigned int len);
-  static void writeData(struct JaxPacket& p, void *buffer, unsigned int len);
   static std::string readString(struct JaxPacket& p);
   static std::string readStringLiteral(struct JaxPacket& p);
   static std::string peekStringLiteral(struct JaxPacket p, unsigned int pos);
   static std::string readStringCompressed(struct JaxPacket& p);
+  static void writeByte(struct JaxPacket& p, char c);
+  static void writeData(struct JaxPacket& p, const void *buffer, unsigned int len);
   static void writeString(struct JaxPacket& p, std::string str);
+  static void writeStringLiteral(struct JaxPacket &p, std::string str);
 };

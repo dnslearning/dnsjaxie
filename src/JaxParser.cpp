@@ -139,11 +139,24 @@ void JaxParser::encodeAnswer(struct JaxPacket& p, struct JaxDnsAnswer& answer) {
 }
 
 void JaxParser::writeString(struct JaxPacket& p, std::string str) {
-
+  auto parts = Jax::split(str, '.');
+  for (auto str : parts) { writeStringLiteral(p, str); }
+  writeByte(p, '\0');
 }
 
-void JaxParser::writeData(struct JaxPacket& p, void *buffer, unsigned int len) {
+void JaxParser::writeByte(struct JaxPacket& p, char c) {
+  if (p.pos >= p.inputSize) { throw std::runtime_error("Attempt to write a byte outside bounds"); }
+  p.input[p.pos++] = c;
+}
+
+void JaxParser::writeData(struct JaxPacket& p, const void *buffer, unsigned int len) {
   if ((p.pos + len) >= p.inputSize) { throw std::runtime_error("Attempt to write outside DNS packet"); }
   memcpy(p.input + p.pos, buffer, len);
   p.pos += len;
+}
+
+void JaxParser::writeStringLiteral(struct JaxPacket& p, std::string str) {
+  if (str.size() > 63) { throw std::runtime_error("DNS strings cannot be longer than 63 chars"); }
+  writeByte(p, str.size());
+  writeData(p, str.c_str(), str.size());
 }
