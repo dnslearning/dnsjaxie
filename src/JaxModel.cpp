@@ -22,7 +22,7 @@ void JaxModel::prepare() {
   sqlInsertActivity = sqlInsertActivity ? sqlInsertActivity : sqlConnection->prepareStatement(
     "insert into `device_activity` set "
     " `device_id` = ?, "
-    " `time` = (unix_timestamp() / 60) * 60, "
+    " `time` = floor(unix_timestamp() / 60) * 60, "
     " `dns` = 1, "
     " `learnMode` = ? "
     "on duplicate key update `dns` = `dns` + 1"
