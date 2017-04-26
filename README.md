@@ -14,10 +14,17 @@ Grab code, make code, install code.
      sudo apt install build-essential g++ libmysqlclient-dev libmysqlcppconn-dev
      make
 
-## Install
-
-    make install
 
 ## Configuration
 
-dnsjaxie talks to a MySQL database.
+`dnsjaxie` by default opens a configuration file at `/etc/dnsjaxie.conf` or
+whatever file passed by the `-f <file>` option. The file is a simple text-based file with the following options:
+
+```
+dbname dnsjaxie
+dbhost localhost
+dbuser root
+dbpass hunter42
+dnshost 8.8.8.8
+dnsport 53
+```
