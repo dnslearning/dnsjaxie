@@ -6,10 +6,10 @@
 struct JaxDnsHeader {
   unsigned short id;
   unsigned short flags;
-  unsigned short qdcount;
-  unsigned short ancount;
-  unsigned short nscount;
-  unsigned short arcount;
+  unsigned short qdcount; // Question Section
+  unsigned short ancount; // Answer Section
+  unsigned short nscount; // Authority Section
+  unsigned short arcount; // Additional Section
 } __attribute__ ((packed));
 
 struct JaxDnsQuestionHeader {
@@ -32,12 +32,14 @@ struct JaxDnsAnswerHeader {
 struct JaxDnsAnswer {
   struct JaxDnsAnswerHeader header;
   std::string domain;
+  bool ipv6;
+  in_addr addr4;
+  in6_addr addr6;
 };
 
 class JaxParser {
 public:
   struct JaxDnsHeader header;
-  //std::list<std::string> domains;
   std::list<struct JaxDnsQuestion> questions;
   std::list<struct JaxDnsAnswer> answers;
 
@@ -48,16 +50,11 @@ public:
   void encodeQuestion(struct JaxPacket& p, struct JaxDnsQuestion& question);
   void encodeAnswer(struct JaxPacket& p, struct JaxDnsAnswer& answer);
 
-  bool isEmpty();
-  bool isResponse() { return header.flags & 0b1; }
-  unsigned int getOpcode() { return (header.flags >> 1) & 0b11; }
-  bool isAuthAnswer() { return (header.flags >> 5) & 0b1; }
-  bool isTruncated() { return (header.flags >> 6) & 0b1; }
-  bool isRecursionDesired() { return (header.flags >> 7) & 0b1; }
-  bool isRecursionAvail() { return (header.flags >> 8) & 0b1; }
-  unsigned int getReserved() { return (header.flags >> 9) & 0b111; }
-  bool isReservedZero() { return getReserved() == 0; }
-  unsigned int getResponseCode() { return  (header.flags >> 12) & 0b1111; }
+  bool isResponse() { return header.flags & FLAG_RESPONSE; }
+  bool isAuthAnswer() { return header.flags & FLAG_AUTH_ANSWER; }
+  bool isTruncated() { return header.flags & FLAG_TRUNCATED; }
+  bool isRecursionDesired() { return header.flags & FLAG_RECURSION_DESIRED; }
+  bool isRecursionAvail() { return header.flags & FLAG_RECURSION_AVAILABLE; }
 
   static unsigned char readByte(struct JaxPacket& p);
   static unsigned char peekByte(struct JaxPacket p);
@@ -70,4 +67,10 @@ public:
   static void writeData(struct JaxPacket& p, const void *buffer, unsigned int len);
   static void writeString(struct JaxPacket& p, std::string str);
   static void writeStringLiteral(struct JaxPacket &p, std::string str);
+
+  static const unsigned short FLAG_RESPONSE = 1 << 15;
+  static const unsigned short FLAG_AUTH_ANSWER = 1 << 10;
+  static const unsigned short FLAG_TRUNCATED = 1 << 9;
+  static const unsigned short FLAG_RECURSION_DESIRED = (1 << 8);
+  static const unsigned short FLAG_RECURSION_AVAILABLE = (1 << 7);
 };

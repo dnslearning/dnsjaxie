@@ -29,8 +29,8 @@ public:
   bool recvQuestion();
   void recvQuestion(struct JaxPacket& packet, struct sockaddr_in6& senderAddress, struct in6_addr& recvAddress);
   void sendResponse(const char *buffer, unsigned int bufferSize, struct sockaddr_in6& addr);
-  void sendFakeResponse(struct sockaddr_in6& addr);
-  bool isAccessEnabled(struct sockaddr_in6& addr);
+  void sendFakeResponse(class JaxClient& client);
+  bool isAccessEnabled(class JaxClient& client);
   int createOutboundSocket();
   void removeSocket(int outboundSocket);
 };

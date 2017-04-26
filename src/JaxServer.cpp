@@ -152,24 +152,27 @@ void JaxServer::recvQuestion(
   struct JaxPacket& p,
   struct sockaddr_in6& senderAddress, struct in6_addr& recvAddress
 ) {
-  if (!isAccessEnabled(senderAddress)) {
-    sendFakeResponse(senderAddress);
+  class JaxClient client;
+  client.id = parser.header.id;
+  client.addr = senderAddress;
+  client.listenAddress = recvAddress;
+
+  if (!isAccessEnabled(client)) {
+    sendFakeResponse(client);
     return;
   }
 
-  class JaxClient client;
-  client.addr = senderAddress;
   client.outboundSocket = createOutboundSocket();
   client.originalSocket = client.outboundSocket;
   clients.push_back(client);
   FD_SET(client.outboundSocket, &readFileDescs);
 }
 
-bool JaxServer::isAccessEnabled(struct sockaddr_in6& addr) {
-  return model.fetch(addr.sin6_addr) && model.learnMode <= 0;
+bool JaxServer::isAccessEnabled(class JaxClient& client) {
+  return model.fetch(client.listenAddress) && model.learnMode <= 0;
 }
 
-void JaxServer::sendFakeResponse(struct sockaddr_in6& addr) {
+void JaxServer::sendFakeResponse(class JaxClient& client) {
   char buffer[1024];
   struct JaxPacket packet;
   packet.input = buffer;
@@ -177,13 +180,21 @@ void JaxServer::sendFakeResponse(struct sockaddr_in6& addr) {
   packet.pos = 0;
 
   parser.header = {};
-  parser.header.id = (unsigned short)(rand() & 0xFFFF);
-  parser.header.flags = 0b1;
-  parser.header.ancount = 1;
+  parser.header.id = client.id;
+  parser.header.flags = JaxParser::FLAG_RESPONSE | JaxParser::FLAG_RECURSION_AVAILABLE;
 
-  struct JaxDnsAnswer answer = {};
-  answer.domain = "test.com";
-  parser.answers.push_back(answer);
+  for (auto question : parser.questions) {
+    struct JaxDnsAnswer answer = {};
+    answer.domain = question.domain;
+    answer.ipv6 = true;
+    answer.addr6 = client.listenAddress;
+    answer.header.ttl = 1;
+    answer.header.atype = answer.ipv6 ? 28 : 1;
+    answer.header.aclass = 1;
+    parser.answers.push_back(answer);
+  }
+
+  parser.questions.clear();
 
   if (!parser.encode(packet)) {
     Jax::debug("Failed to encode a fake response packet");
@@ -194,7 +205,7 @@ void JaxServer::sendFakeResponse(struct sockaddr_in6& addr) {
     sock,
     buffer, packet.pos,
     MSG_DONTWAIT,
-    (sockaddr*)&addr, sizeof(addr)
+    (sockaddr*)&client.addr, sizeof(client.addr)
   );
 
   if (ok < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {

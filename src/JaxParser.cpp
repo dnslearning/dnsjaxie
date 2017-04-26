@@ -1,10 +1,6 @@
 
 #include "JaxParser.hpp"
 
-bool JaxParser::isEmpty() {
-  return header.qdcount <= 0 && header.ancount <= 0 && header.nscount <= 0 && header.arcount <= 0;
-}
-
 bool JaxParser::decode(struct JaxPacket& p) {
   questions.clear();
   answers.clear();
@@ -26,7 +22,7 @@ bool JaxParser::decode(struct JaxPacket& p) {
   header.ancount = ntohs(header.ancount);
   Jax::debug("qdcount = %d, ancount = %d", header.qdcount, header.ancount);
 
-  if (isEmpty()) {
+  if (header.qdcount <= 0 && header.ancount <= 0 && header.nscount <= 0 && header.arcount <= 0) {
     Jax::debug("Refusing to decode empty DNS packet");
     return false;
   }
@@ -113,11 +109,12 @@ unsigned char JaxParser::peekByte(struct JaxPacket p) {
 }
 
 bool JaxParser::encode(struct JaxPacket& p) {
-  if (isEmpty()) {
+  if (questions.empty() && answers.empty()) {
     Jax::debug("Refusing to encode empty DNS packet");
     return false;
   }
 
+  header.id = htons(header.id);
   header.qdcount = htons(questions.size());
   header.ancount = htons(answers.size());
   header.nscount = 0;
@@ -131,11 +128,25 @@ bool JaxParser::encode(struct JaxPacket& p) {
 }
 
 void JaxParser::encodeQuestion(struct JaxPacket& p, struct JaxDnsQuestion& question) {
-
+  writeString(p, question.domain);
+  question.header.qtype = htons(question.header.qtype);
+  question.header.qclass = htons(question.header.qclass);
+  writeData(p, &question.header, sizeof(question.header));
 }
 
 void JaxParser::encodeAnswer(struct JaxPacket& p, struct JaxDnsAnswer& answer) {
+  writeString(p, answer.domain);
+  answer.header.atype = htons(answer.header.atype);
+  answer.header.aclass = htons(answer.header.aclass);
+  answer.header.ttl = htonl(answer.header.ttl);
+  answer.header.dataLen = htons(answer.ipv6 ? sizeof(answer.addr6) : sizeof(answer.addr4));
+  writeData(p, &answer.header, sizeof(answer.header));
 
+  if (answer.ipv6) {
+    writeData(p, &answer.addr6, sizeof(answer.addr6));
+  } else {
+    writeData(p, &answer.addr4, sizeof(answer.addr4));
+  }
 }
 
 void JaxParser::writeString(struct JaxPacket& p, std::string str) {

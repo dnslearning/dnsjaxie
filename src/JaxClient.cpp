@@ -6,7 +6,7 @@ JaxClient::JaxClient() {
 }
 
 JaxClient::~JaxClient() {
-
+  // Ensure socket is closed (add this once working and debug to ensure working correctly)
 }
 
 void JaxClient::closeSocket() {
