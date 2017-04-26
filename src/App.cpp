@@ -54,6 +54,10 @@ void App::configure(std::string key, std::string value) {
     server.model.name = value;
   } else if (key == "dbhost") {
     server.model.host = value;
+  } else if (key == "dnshost") {
+    server.realDnsAddr.sin_addr.s_addr = inet_addr(value.c_str());
+  } else if (key == "dnsport") {
+    server.realDnsAddr.sin_port = htons((unsigned short)std::stoi(value));
   } else {
     Jax::debug("Unknown config key '%s'", key.c_str());
   }
