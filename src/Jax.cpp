@@ -12,7 +12,9 @@ void Jax::debug(const char *format, ...) {
 }
 
 std::runtime_error Jax::socketError(std::string reason) {
-  return std::runtime_error(reason);
+  char buffer[1024];
+  snprintf(buffer, sizeof(buffer), "Socket error %s: %s", reason.c_str(), strerror(errno));
+  return std::runtime_error(std::string(buffer));
 }
 
 // http://stackoverflow.com/a/236803/226526

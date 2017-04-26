@@ -39,16 +39,16 @@ struct JaxDnsAnswer {
 
 class JaxParser {
 public:
-  struct JaxDnsHeader header;
-  std::list<struct JaxDnsQuestion> questions;
-  std::list<struct JaxDnsAnswer> answers;
+  JaxDnsHeader header;
+  std::list<JaxDnsQuestion> questions;
+  std::list<JaxDnsAnswer> answers;
 
-  bool decode(struct JaxPacket& p);
-  void decodeQuestion(struct JaxPacket& p);
-  void decodeAnswer(struct JaxPacket& p);
-  bool encode(struct JaxPacket& p);
-  void encodeQuestion(struct JaxPacket& p, struct JaxDnsQuestion& question);
-  void encodeAnswer(struct JaxPacket& p, struct JaxDnsAnswer& answer);
+  bool decode(JaxPacket& p);
+  void decodeQuestion(JaxPacket& p);
+  void decodeAnswer(JaxPacket& p);
+  bool encode(JaxPacket& p);
+  void encodeQuestion(JaxPacket& p, JaxDnsQuestion& question);
+  void encodeAnswer(JaxPacket& p, JaxDnsAnswer& answer);
 
   bool isResponse() { return header.flags & FLAG_RESPONSE; }
   bool isAuthAnswer() { return header.flags & FLAG_AUTH_ANSWER; }
@@ -56,17 +56,17 @@ public:
   bool isRecursionDesired() { return header.flags & FLAG_RECURSION_DESIRED; }
   bool isRecursionAvail() { return header.flags & FLAG_RECURSION_AVAILABLE; }
 
-  static unsigned char readByte(struct JaxPacket& p);
-  static unsigned char peekByte(struct JaxPacket p);
-  static void readData(struct JaxPacket& p, void *buffer, unsigned int len);
-  static std::string readString(struct JaxPacket& p);
-  static std::string readStringLiteral(struct JaxPacket& p);
-  static std::string peekStringLiteral(struct JaxPacket p, unsigned int pos);
-  static std::string readStringCompressed(struct JaxPacket& p);
-  static void writeByte(struct JaxPacket& p, char c);
-  static void writeData(struct JaxPacket& p, const void *buffer, unsigned int len);
-  static void writeString(struct JaxPacket& p, std::string str);
-  static void writeStringLiteral(struct JaxPacket &p, std::string str);
+  static unsigned char readByte(JaxPacket& p);
+  static unsigned char peekByte(JaxPacket p);
+  static void readData(JaxPacket& p, void *buffer, unsigned int len);
+  static std::string readString(JaxPacket& p);
+  static std::string readStringLiteral(JaxPacket& p);
+  static std::string peekStringLiteral(JaxPacket p, unsigned int pos);
+  static std::string readStringCompressed(JaxPacket& p);
+  static void writeByte(JaxPacket& p, char c);
+  static void writeData(JaxPacket& p, const void *buffer, unsigned int len);
+  static void writeString(JaxPacket& p, std::string str);
+  static void writeStringLiteral(JaxPacket &p, std::string str);
 
   static const unsigned short FLAG_RESPONSE = 1 << 15;
   static const unsigned short FLAG_AUTH_ANSWER = 1 << 10;

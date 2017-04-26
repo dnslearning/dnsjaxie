@@ -5,6 +5,9 @@ JaxServer::JaxServer() {
   bindAddress.sin6_family = AF_INET6;
   bindAddress.sin6_addr = in6addr_any;
   bindAddress.sin6_port = htons(14222);
+  realDnsAddr.sin_family = AF_INET;
+  realDnsAddr.sin_port = htons(53);
+  realDnsAddr.sin_addr.s_addr = inet_addr("8.8.8.8");
 }
 
 JaxServer::~JaxServer() {
@@ -50,7 +53,7 @@ bool JaxServer::tickSelect() {
   }
 
   for (auto it = clients.begin(); it != clients.end(); ++it) {
-    class JaxClient& client = *it;
+    JaxClient& client = *it;
 
     if (FD_ISSET(client.outboundSocket, &active)) {
       client.recvAnswer(*this);
@@ -125,7 +128,7 @@ bool JaxServer::recvQuestion() {
     return false;
   }
 
-  struct JaxPacket packet;
+  JaxPacket packet;
   packet.pos = 0;
   packet.input = recvBuffer;
   packet.inputSize = recvSize;
@@ -149,10 +152,10 @@ bool JaxServer::recvQuestion() {
 }
 
 void JaxServer::recvQuestion(
-  struct JaxPacket& p,
+  JaxPacket& p,
   struct sockaddr_in6& senderAddress, struct in6_addr& recvAddress
 ) {
-  class JaxClient client;
+  JaxClient client;
   client.id = parser.header.id;
   client.addr = senderAddress;
   client.listenAddress = recvAddress;
@@ -166,15 +169,16 @@ void JaxServer::recvQuestion(
   client.originalSocket = client.outboundSocket;
   clients.push_back(client);
   FD_SET(client.outboundSocket, &readFileDescs);
+  forwardRequest(client, p);
 }
 
-bool JaxServer::isAccessEnabled(class JaxClient& client) {
+bool JaxServer::isAccessEnabled(JaxClient& client) {
   return model.fetch(client.listenAddress) && model.learnMode <= 0;
 }
 
-void JaxServer::sendFakeResponse(class JaxClient& client) {
+void JaxServer::sendFakeResponse(JaxClient& client) {
   char buffer[1024];
-  struct JaxPacket packet;
+  JaxPacket packet;
   packet.input = buffer;
   packet.inputSize = sizeof(buffer);
   packet.pos = 0;
@@ -184,7 +188,7 @@ void JaxServer::sendFakeResponse(class JaxClient& client) {
   parser.header.flags = JaxParser::FLAG_RESPONSE | JaxParser::FLAG_RECURSION_AVAILABLE;
 
   for (auto question : parser.questions) {
-    struct JaxDnsAnswer answer = {};
+    JaxDnsAnswer answer = {};
     answer.domain = question.domain;
     answer.ipv6 = true;
     answer.addr6 = client.listenAddress;
@@ -213,6 +217,17 @@ void JaxServer::sendFakeResponse(class JaxClient& client) {
   }
 }
 
+void JaxServer::forwardRequest(JaxClient& client, JaxPacket& packet) {
+  int ok = sendto(
+    client.outboundSocket,
+    packet.input, packet.inputSize,
+    MSG_DONTWAIT,
+    (sockaddr*)&realDnsAddr, sizeof(realDnsAddr)
+  );
+
+  if (ok < 0) { throw Jax::socketError("Unable to forward DNS request"); }
+}
+
 int JaxServer::createOutboundSocket() {
   struct sockaddr_in addr;
   addr.sin_family = AF_INET;
@@ -234,7 +249,7 @@ void JaxServer::sendResponse(const char *buffer, unsigned int bufferSize, struct
   int ok = sendto(
     sock,
     buffer, bufferSize,
-    0, // flags
+    MSG_DONTWAIT, // flags
     (sockaddr*)&addr, sizeof(addr)
   );
   if (ok < 0) { throw Jax::socketError("Cannot send response packet"); }

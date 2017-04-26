@@ -24,7 +24,7 @@ void JaxClient::timeout() {
   }
 }
 
-void JaxClient::recvAnswer(class JaxServer& server) {
+void JaxClient::recvAnswer(JaxServer& server) {
   char recvBuffer[1024];
   jax_zero(recvBuffer);
 

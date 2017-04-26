@@ -16,6 +16,6 @@ public:
   JaxClient();
   ~JaxClient();
   void closeSocket();
-  void recvAnswer(class JaxServer& server);
+  void recvAnswer(JaxServer& server);
   void timeout();
 };

@@ -9,13 +9,14 @@
 class JaxServer {
 private:
   bool stopped;
-  std::list<class JaxClient> clients;
+  std::list<JaxClient> clients;
   int sock;
   fd_set readFileDescs;
 public:
   sockaddr_in6 bindAddress;
-  class JaxModel model;
-  class JaxParser parser;
+  JaxModel model;
+  JaxParser parser;
+  sockaddr_in realDnsAddr;
 
   JaxServer();
   ~JaxServer();
@@ -27,10 +28,11 @@ public:
   bool tickSelect();
   void tickListener();
   bool recvQuestion();
-  void recvQuestion(struct JaxPacket& packet, struct sockaddr_in6& senderAddress, struct in6_addr& recvAddress);
+  void recvQuestion(JaxPacket& packet, struct sockaddr_in6& senderAddress, struct in6_addr& recvAddress);
   void sendResponse(const char *buffer, unsigned int bufferSize, struct sockaddr_in6& addr);
-  void sendFakeResponse(class JaxClient& client);
-  bool isAccessEnabled(class JaxClient& client);
+  void forwardRequest(JaxClient& client, JaxPacket& packet);
+  void sendFakeResponse(JaxClient& client);
+  bool isAccessEnabled(JaxClient& client);
   int createOutboundSocket();
   void removeSocket(int outboundSocket);
 };

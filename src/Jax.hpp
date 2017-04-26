@@ -55,4 +55,18 @@ struct JaxPacket {
   unsigned int pos;
 };
 
+typedef class App App;
+typedef class JaxServer JaxServer;
+typedef class JaxClient JaxClient;
+typedef class JaxParser JaxParser;
+typedef class JaxModel JaxModel;
+
+typedef struct JaxPacket JaxPacket;
+typedef struct JaxDnsHeader JaxDnsHeader;
+typedef struct JaxDnsQuestionHeader JaxDnsQuestionHeader;
+typedef struct JaxDnsQuestion JaxDnsQuestion;
+typedef struct JaxDnsAnswer JaxDnsAnswer;
+typedef struct JaxDnsAnswerHeader JaxDnsAnswerHeader;
+
+
 #define jax_zero(s) memset(&(s), 0, sizeof(s));

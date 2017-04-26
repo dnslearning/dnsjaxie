@@ -6,7 +6,7 @@
 
 class App {
 private:
-  class JaxServer server;
+  JaxServer server;
   std::string configPath = "/etc/dnsjaxie.conf";
 public:
   void setOptions(const int argc, char* const argv[]);
