@@ -9,11 +9,12 @@ HTTP site.
 
 Grab code, make code, install code.
 
-     git clone https://github.com/smartmadre/dnsjaxie.git
-     cd dnsjaxie
-     sudo apt install build-essential g++ libmysqlclient-dev libmysqlcppconn-dev
-     make
-
+```
+git clone https://github.com/smartmadre/dnsjaxie.git
+cd dnsjaxie
+sudo apt install build-essential g++ libmysqlclient-dev libmysqlcppconn-dev
+make
+```
 
 ## Configuration
 
