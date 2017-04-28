@@ -8,6 +8,7 @@
 #include <utility>
 #include <string>
 #include <list>
+#include <unordered_map>
 #include <vector>
 #include <iterator>
 #include <fstream>
@@ -47,12 +48,20 @@ public:
   template<typename Out>
   static void split(const std::string &s, char delim, Out result);
   static std::vector<std::string> split(const std::string &s, char delim);
+  static std::string toString(struct in6_addr& addr);
 };
 
 struct JaxPacket {
   char *input;
   unsigned int inputSize;
   unsigned int pos;
+};
+
+struct JaxDomain {
+  std::string host;
+  bool allow;
+  bool deny;
+  bool ignore;
 };
 
 typedef class App App;
@@ -67,6 +76,7 @@ typedef struct JaxDnsQuestionHeader JaxDnsQuestionHeader;
 typedef struct JaxDnsQuestion JaxDnsQuestion;
 typedef struct JaxDnsAnswer JaxDnsAnswer;
 typedef struct JaxDnsAnswerHeader JaxDnsAnswerHeader;
+typedef struct JaxDomain JaxDomain;
 
 
 #define jax_zero(s) memset(&(s), 0, sizeof(s));

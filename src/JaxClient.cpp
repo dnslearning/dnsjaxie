@@ -25,6 +25,7 @@ void JaxClient::timeout() {
 }
 
 void JaxClient::recvAnswer(JaxServer& server) {
+  Jax::debug("Received response from real DNS server");
   char recvBuffer[1024];
   jax_zero(recvBuffer);
 
@@ -37,5 +38,5 @@ void JaxClient::recvAnswer(JaxServer& server) {
     return;
   }
 
-  server.sendResponse(recvBuffer, sizeof(recvBuffer), addr);
+  server.sendResponse(*this, recvBuffer, recvSize);
 }

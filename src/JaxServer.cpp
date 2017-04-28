@@ -33,6 +33,7 @@ void JaxServer::listen() {
   ok = setsockopt(sock, IPPROTO_IPV6, IPV6_RECVPKTINFO, &yes, sizeof(yes));
   if (ok < 0) { throw Jax::socketError("Unable to set IPV6_RECVPKTINFO"); }
   FD_SET(sock, &readFileDescs);
+  model.prepare();
 }
 
 void JaxServer::tick() {
@@ -138,10 +139,6 @@ bool JaxServer::recvQuestion() {
     return false;
   }
 
-  for (auto q : parser.questions) {
-    Jax::debug("Domain: %s", q.domain.c_str());
-  }
-
   if (parser.isResponse()) {
     Jax::debug("Skipping DNS packet on inbound socket because isResponse");
     return false;
@@ -173,10 +170,25 @@ void JaxServer::recvQuestion(
 }
 
 bool JaxServer::isAccessEnabled(JaxClient& client) {
+  for (auto q : parser.questions) {
+    JaxDomain domain;
+    Jax::debug("Domain: %s", q.domain.c_str());
+
+    if (model.getDomain(q.domain, domain)) {
+      if (domain.allow) {
+        return true;
+      } else if (domain.deny) {
+        return false;
+      }
+    }
+  }
+
   return model.fetch(client.listenAddress) && model.learnMode <= 0;
 }
 
 void JaxServer::sendFakeResponse(JaxClient& client) {
+  Jax::debug("Sending fake response");
+
   char buffer[1024];
   JaxPacket packet;
   packet.input = buffer;
@@ -205,16 +217,7 @@ void JaxServer::sendFakeResponse(JaxClient& client) {
     return;
   }
 
-  int ok = sendto(
-    sock,
-    buffer, packet.pos,
-    MSG_DONTWAIT,
-    (sockaddr*)&client.addr, sizeof(client.addr)
-  );
-
-  if (ok < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-    throw Jax::socketError("Cannot send fake response packet");
-  }
+  sendtofrom(sock, buffer, packet.pos, client.addr, client.listenAddress);
 }
 
 void JaxServer::forwardRequest(JaxClient& client, JaxPacket& packet) {
@@ -240,17 +243,46 @@ int JaxServer::createOutboundSocket() {
   return outboundSocket;
 }
 
-void JaxServer::sendResponse(const char *buffer, unsigned int bufferSize, struct sockaddr_in6& addr) {
+void JaxServer::sendResponse(JaxClient& client, const char *buffer, unsigned int bufferSize) {
   if (!sock) {
     Jax::debug("Not sending a packet because socket is gone");
     return;
   }
 
-  int ok = sendto(
-    sock,
-    buffer, bufferSize,
-    MSG_DONTWAIT, // flags
-    (sockaddr*)&addr, sizeof(addr)
-  );
-  if (ok < 0) { throw Jax::socketError("Cannot send response packet"); }
+  Jax::debug("Sending response to client [%s]:%d", Jax::toString(client.addr.sin6_addr).c_str(), ntohs(client.addr.sin6_port));
+  sendtofrom(sock, buffer, bufferSize, client.addr, client.listenAddress);
+}
+
+void JaxServer::sendtofrom(int s, const char *buffer, unsigned int bufferSize, struct sockaddr_in6& to, struct in6_addr& from) {
+  if (s <= 0) { throw std::runtime_error("Missing socket"); }
+  struct msghdr msg = {};
+  struct in6_pktinfo *packetInfo = NULL;
+  struct cmsghdr *cmsg = NULL;
+  char controlData[CMSG_SPACE(sizeof(struct in6_pktinfo))];
+  jax_zero(controlData);
+
+  struct iovec iov[1];
+  iov[0].iov_base = (void*)buffer;
+  iov[0].iov_len = bufferSize;
+  msg.msg_name = &to;
+  msg.msg_namelen = sizeof(to);
+  msg.msg_iov = iov;
+  msg.msg_iovlen = 1;
+  msg.msg_control = controlData;
+  msg.msg_controllen = sizeof(controlData);
+  msg.msg_flags = 0;
+  cmsg = CMSG_FIRSTHDR(&msg);
+  cmsg->cmsg_level = IPPROTO_IPV6;
+  cmsg->cmsg_type = IPV6_PKTINFO;
+  cmsg->cmsg_len = CMSG_LEN(sizeof(in6_pktinfo));
+  packetInfo = (in6_pktinfo*)CMSG_DATA(cmsg);
+  packetInfo->ipi6_ifindex = 0;
+  packetInfo->ipi6_addr = from;
+  msg.msg_controllen = cmsg->cmsg_len;
+
+  if (sendmsg(s, &msg, MSG_DONTWAIT) < 0) {
+    if (errno != EAGAIN && errno != EWOULDBLOCK) {
+      throw Jax::socketError("Unable to sendmsg()");
+    }
+  }
 }

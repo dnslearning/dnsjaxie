@@ -40,14 +40,42 @@ void JaxModel::prepare() {
     " `hits` = `hits` + 1, "
     " `lastSeen` = unix_timestamp()"
   );
+
+  sqlFetchDomains = sqlFetchDomains ? sqlFetchDomains : sqlConnection->prepareStatement(
+    "select * from `domain`"
+  );
+
+  if (!domains.empty()) {
+    return;
+  }
+
+  sqlFetchDomains->execute();
+  sql::ResultSet *resultSet = sqlFetchDomains->getResultSet();
+
+  while (resultSet->next()) {
+    JaxDomain domain;
+    domain.host = std::string(resultSet->getString("host"));
+    domain.allow = resultSet->getBoolean("allow");
+    domain.deny = resultSet->getBoolean("deny");
+    domain.ignore = resultSet->getBoolean("ignore");
+    domains[domain.host] = domain;
+
+    Jax::debug("Domain: %s (allow=%d, deny=%d, ignore=%d)", domain.host.c_str(), domain.allow, domain.deny, domain.ignore);
+  }
+
+  delete resultSet;
+}
+
+bool JaxModel::getDomain(std::string host, JaxDomain& domain) {
+  if (domains.find(host) == domains.end()) { return false; }
+  domain = domains[host];
+  return true;
 }
 
 bool JaxModel::fetch(struct in6_addr& addr) {
   prepare();
-  char addrStr[INET6_ADDRSTRLEN];
-  jax_zero(addrStr);
-  inet_ntop(AF_INET6, &addr, addrStr, sizeof(addrStr));
-  Jax::debug("Looking up IP %s", addrStr);
+  std::string addrStr = Jax::toString(addr);
+  Jax::debug("Looking up IP %s", addrStr.c_str());
   sqlFetch->setString(1, addrStr);
   if (!sqlFetch->execute()) { return false; }
   sql::ResultSet *resultSet = sqlFetch->getResultSet();

@@ -33,3 +33,10 @@ std::vector<std::string> Jax::split(const std::string &s, char delim) {
     split(s, delim, std::back_inserter(elems));
     return elems;
 }
+
+std::string Jax::toString(struct in6_addr& addr) {
+  char buffer[INET6_ADDRSTRLEN];
+  jax_zero(buffer);
+  inet_ntop(AF_INET6, &addr, buffer, sizeof(buffer));
+  return std::string(buffer);
+}

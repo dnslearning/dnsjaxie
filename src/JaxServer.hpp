@@ -29,10 +29,12 @@ public:
   void tickListener();
   bool recvQuestion();
   void recvQuestion(JaxPacket& packet, struct sockaddr_in6& senderAddress, struct in6_addr& recvAddress);
-  void sendResponse(const char *buffer, unsigned int bufferSize, struct sockaddr_in6& addr);
+  void sendResponse(JaxClient& client, const char *buffer, unsigned int bufferSize);
   void forwardRequest(JaxClient& client, JaxPacket& packet);
   void sendFakeResponse(JaxClient& client);
   bool isAccessEnabled(JaxClient& client);
   int createOutboundSocket();
   void removeSocket(int outboundSocket);
+
+  void sendtofrom(int s, const char *buffer, unsigned int bufferSize, struct sockaddr_in6& to, struct in6_addr& from);
 };
