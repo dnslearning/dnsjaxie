@@ -183,7 +183,15 @@ bool JaxServer::isAccessEnabled(JaxClient& client) {
     }
   }
 
-  return model.fetch(client.listenAddress) && model.learnMode <= 0;
+  if (!model.fetch(client.listenAddress)) {
+    return false;
+  }
+
+  for (auto q : parser.questions) {
+    model.insertTimeline(model.deviceId, q.domain);
+  }
+
+  return model.learnMode <= 0;
 }
 
 void JaxServer::sendFakeResponse(JaxClient& client) {
