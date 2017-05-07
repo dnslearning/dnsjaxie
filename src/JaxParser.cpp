@@ -34,6 +34,8 @@ void JaxParser::decodeQuestion(JaxPacket& p) {
   JaxDnsQuestion question;
   question.domain = readString(p);
   readData(p, &question.header, sizeof(question.header));
+  question.header.qtype = ntohs(question.header.qtype);
+  question.header.qclass = ntohs(question.header.qclass);
   // TODO do we care if they are asking for a specific type of record like MX?
   questions.push_back(question);
 }
