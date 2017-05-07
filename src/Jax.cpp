@@ -19,7 +19,7 @@ std::runtime_error Jax::socketError(std::string reason) {
 
 // http://stackoverflow.com/a/236803/226526
 template<typename Out>
-void Jax::split(const std::string &s, char delim, Out result) {
+void Jax::split(const std::string& s, char delim, Out result) {
     std::stringstream ss;
     ss.str(s);
     std::string item;
@@ -28,7 +28,7 @@ void Jax::split(const std::string &s, char delim, Out result) {
     }
 }
 
-std::vector<std::string> Jax::split(const std::string &s, char delim) {
+std::vector<std::string> Jax::split(const std::string& s, char delim) {
     std::vector<std::string> elems;
     split(s, delim, std::back_inserter(elems));
     return elems;
@@ -39,4 +39,10 @@ std::string Jax::toString(struct in6_addr& addr) {
   jax_zero(buffer);
   inet_ntop(AF_INET6, &addr, buffer, sizeof(buffer));
   return std::string(buffer);
+}
+
+std::string Jax::toString(std::vector<std::string>& parts, const char *delim) {
+  std::ostringstream joined;
+  std::copy(parts.begin(), parts.end(), std::ostream_iterator<std::string>(joined, delim));
+  return joined.str();
 }

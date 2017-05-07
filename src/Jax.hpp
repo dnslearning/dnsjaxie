@@ -46,9 +46,10 @@ public:
   static void debug(const char *format, ...);
 
   template<typename Out>
-  static void split(const std::string &s, char delim, Out result);
-  static std::vector<std::string> split(const std::string &s, char delim);
+  static void split(const std::string& s, char delim, Out result);
+  static std::vector<std::string> split(const std::string& s, char delim);
   static std::string toString(struct in6_addr& addr);
+  static std::string toString(std::vector<std::string>& parts, const char *delim);
 };
 
 struct JaxPacket {

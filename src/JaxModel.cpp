@@ -95,6 +95,10 @@ void JaxModel::insertActivity(int id, bool learnMode) {
 }
 
 void JaxModel::insertTimeline(int id, std::string domain) {
+  std::vector<std::string> parts = Jax::split(domain, '.');
+  if (parts.size() < 2) { return; }
+  parts.resize(2);
+  domain = Jax::toString(parts, ".");
   prepare();
   sqlInsertTimeline->setInt(1, id);
   sqlInsertTimeline->setString(2, domain);
