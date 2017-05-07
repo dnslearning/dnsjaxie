@@ -47,29 +47,43 @@ void JaxParser::decodeAnswer(JaxPacket& p) {
   Jax::debug("Answer: %s", answer.domain.c_str());
 
   readData(p, &answer.header, sizeof(answer.header));
+  answer.header.atype = ntohs(answer.header.atype);
+  answer.header.aclass = ntohs(answer.header.aclass);
+  answer.header.ttl = ntohl(answer.header.ttl);
+  answer.header.dataLen = ntohs(answer.header.dataLen);
+
+  if (answer.header.dataLen > 512) {
+    Jax::debug("dataLen = %d", answer.header.dataLen);
+    throw std::runtime_error("Answer tried to include a very large data chunk");
+  }
+
+  Jax::debug("Answer data is %d bytes", answer.header.dataLen);
+
+  if (answer.header.atype == 1) {
+    answer.ipv6 = false;
+    readData(p, &answer.addr4, sizeof(answer.addr4));
+  } else if (answer.header.atype == 28) {
+    answer.ipv6 = true;
+    readData(p, &answer.addr6, sizeof(answer.addr6));
+  } else {
+    char buffer[512];
+    readData(p, buffer, answer.header.dataLen);
+  }
+
   answers.push_back(answer);
 }
 
 std::string JaxParser::readString(JaxPacket& p) {
-  std::string str = "";
+  if (peekByte(p) & 0b11000000) {
+    return readStringCompressed(p);
+  } else {
+    return readStringLiteral(p);
+  }
+}
 
-  do {
-    unsigned char len = peekByte(p);
-
-    if (len == 0) {
-      // Last part of the string
-      break;
-    }
-
-    if (len & 0b11000000) {
-      str += readStringCompressed(p);
-    } else {
-      if (!str.empty()) { str += '.'; }
-      str += readStringLiteral(p);
-    }
-  } while (1);
-
-  return str;
+std::string JaxParser::peekString(JaxPacket p, unsigned int pos) {
+  p.pos = pos;
+  return readString(p);
 }
 
 void JaxParser::readData(JaxPacket& p, void* buffer, unsigned int len) {
@@ -79,26 +93,29 @@ void JaxParser::readData(JaxPacket& p, void* buffer, unsigned int len) {
 }
 
 std::string JaxParser::readStringLiteral(JaxPacket& p) {
-  unsigned char len = readByte(p);
-  if (len > 63) { throw std::runtime_error("DNS strings must be 63 chars or less"); }
+  std::string str = "";
   char chunk[64];
-  readData(p, chunk, len);
-  chunk[len] = '\0';
-  return chunk;
-}
 
-std::string JaxParser::peekStringLiteral(JaxPacket p, unsigned int pos) {
-  p.pos = pos;
-  return readStringLiteral(p);
+  while (1) {
+    unsigned char len = readByte(p);
+    if (len == 0) { break; }
+    if (len > 63) { Jax::debug("len = %d", len); throw std::runtime_error("DNS strings must be 63 chars or less"); }
+    readData(p, chunk, len);
+    chunk[len] = '\0';
+    if (!str.empty()) { str += '.'; }
+    str += chunk;
+  }
+
+  return str;
 }
 
 std::string JaxParser::readStringCompressed(JaxPacket& p) {
   unsigned short offset = readByte(p);
   if ((offset & 0b11000000) != 0b11000000) { throw std::runtime_error("DNS labels should have 2 most significant bits set"); }
-  offset = ntohs((offset & 0b00111111) | (readByte(p) << 6));
+  offset = ntohs((offset & 0b00111111) | (readByte(p) << 8));
   Jax::debug("offset = %d", offset);
   if (offset > p.pos) { throw std::runtime_error("DNS labels must point backwards"); }
-  return peekStringLiteral(p, offset);
+  return peekString(p, offset);
 }
 
 unsigned char JaxParser::readByte(JaxPacket& p) {
