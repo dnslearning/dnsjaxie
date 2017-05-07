@@ -16,7 +16,7 @@ bool JaxParser::decode(JaxPacket& p) {
   header.qdcount = ntohs(header.qdcount);
   header.ancount = ntohs(header.ancount);
   header.nscount = ntohs(header.nscount);
-  header.ancount = ntohs(header.ancount);
+  header.arcount = ntohs(header.arcount);
   Jax::debug("qdcount = %d, ancount = %d", header.qdcount, header.ancount);
 
   if (header.qdcount <= 0 && header.ancount <= 0 && header.nscount <= 0 && header.arcount <= 0) {
