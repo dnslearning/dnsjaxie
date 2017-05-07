@@ -57,7 +57,12 @@ bool JaxServer::tickSelect() {
     JaxClient& client = *it;
 
     if (FD_ISSET(client.outboundSocket, &active)) {
-      client.recvAnswer(*this);
+      try {
+        client.recvAnswer(*this);
+      } catch (std::exception& e) {
+        Jax::debug("Error while recvAnswer(): %s", e.what());
+        client.closeSocket();
+      }
     } else {
       client.timeout();
     }
