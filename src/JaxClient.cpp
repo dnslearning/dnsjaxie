@@ -31,12 +31,36 @@ void JaxClient::recvAnswer(JaxServer& server) {
 
   int recvSize = recv(outboundSocket, recvBuffer, sizeof(recvBuffer), MSG_DONTWAIT);
   if (recvSize < 0) { throw Jax::socketError("Cannot recv()"); }
+  closeSocket();
 
   if (recvSize == 0) {
-    closeSocket();
     Jax::debug("Real DNS server sent us an empty packet");
     return;
   }
 
-  server.sendResponse(*this, recvBuffer, recvSize);
+  JaxPacket packet;
+  packet.input = recvBuffer;
+  packet.inputSize = recvSize;
+  packet.pos = 0;
+
+  if (!server.parser.decode(packet)) {
+    Jax::debug("Real DNS server sent us a packet we cannot decode");
+    return;
+  }
+
+  for (auto& answer : server.parser.answers) {
+    answer.header.ttl = 1;
+  }
+
+  char encodeBuffer[1024];
+  packet.input = encodeBuffer;
+  packet.inputSize = sizeof(encodeBuffer);
+  packet.pos = 0;
+
+  if (!server.parser.encode(packet)) {
+    Jax::debug("Real DNS server sent us a packet we cannot encode");
+    return;
+  }
+
+  server.sendResponse(*this, encodeBuffer, packet.pos);
 }
