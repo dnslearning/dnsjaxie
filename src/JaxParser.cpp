@@ -24,8 +24,8 @@ bool JaxParser::decode(JaxPacket& p) {
     return false;
   }
 
-  for (int i=0; i < header.qdcount; i++) { decodeQuestion(p); }
-  for (int i=0; i < header.ancount; i++) { decodeAnswer(p); }
+  for (int i=0; i < header.qdcount; i++) { Jax::debug("decodeQuestion %d", i); decodeQuestion(p); }
+  for (int i=0; i < header.ancount; i++) { Jax::debug("decodeAnswer %d", i); decodeAnswer(p); }
 
   return true;
 }
