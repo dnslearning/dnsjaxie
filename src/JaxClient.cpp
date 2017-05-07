@@ -53,6 +53,8 @@ void JaxClient::recvAnswer(JaxServer& server) {
   }
 
   char encodeBuffer[1024];
+  jax_zero(encodeBuffer);
+  
   packet.input = encodeBuffer;
   packet.inputSize = sizeof(encodeBuffer);
   packet.pos = 0;
