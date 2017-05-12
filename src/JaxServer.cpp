@@ -78,7 +78,12 @@ bool JaxServer::tickSelect() {
 
 void JaxServer::tickListener() {
   while (isRunning()) {
-    if (!recvQuestion()) { return; }
+    try {
+      if (!recvQuestion()) { return; }
+    } catch (std::exception& e) {
+      Jax::debug("Error while recvQuestion(): %s", e.what());
+      break;
+    }
   }
 }
 
