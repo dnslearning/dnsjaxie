@@ -193,7 +193,7 @@ bool JaxServer::isAccessEnabled(JaxClient& client) {
     }
   }
 
-  if (!model.fetch(client.listenAddress)) {
+  if (!model.fetch(client.listenAddress, client.addr.sin6_addr)) {
     return false;
   }
 

@@ -1,6 +1,8 @@
 
 #include "JaxModel.hpp"
 
+#define prepareSql(symbol, sql) symbol = symbol ? symbol : sqlConnection->prepareStatement(sql);
+
 void JaxModel::prepare() {
   if (!sqlDriver) {
     sqlDriver = get_driver_instance();
@@ -13,13 +15,20 @@ void JaxModel::prepare() {
     sqlConnection->setSchema(name);
   }
 
-  sqlFetch = sqlFetch ? sqlFetch : sqlConnection->prepareStatement(
+  prepareSql(sqlFetchIPv6,
     "select `id`, `learnMode` "
     "from `device` where (`listen_ipv6` = ?) "
     "limit 1"
   );
 
-  sqlInsertActivity = sqlInsertActivity ? sqlInsertActivity : sqlConnection->prepareStatement(
+  prepareSql(sqlFetchIPv4,
+    "select `device`.`id`, `device`.`learnMode` "
+    "from `device_ipv4` "
+    "join `device` on (`device_ipv4`.`device_id` = `device`.`id`) "
+    "where (`device_ipv4`.`local` = ?) and (`device_ipv4`.`remote` = ?)"
+  );
+
+  prepareSql(sqlInsertActivity,
     "insert into `device_activity` set "
     " `device_id` = ?, "
     " `time` = floor(unix_timestamp() / 60) * 60, "
@@ -28,7 +37,7 @@ void JaxModel::prepare() {
     "on duplicate key update `dns` = `dns` + 1"
   );
 
-  sqlInsertTimeline = sqlInsertTimeline ? sqlInsertTimeline : sqlConnection->prepareStatement(
+  prepareSql(sqlInsertTimeline,
     "insert into `timeline` set "
     " `device_id` = ?, "
     " `type` = 'domain', "
@@ -41,7 +50,7 @@ void JaxModel::prepare() {
     " `lastSeen` = unix_timestamp()"
   );
 
-  sqlFetchDomains = sqlFetchDomains ? sqlFetchDomains : sqlConnection->prepareStatement(
+  prepareSql(sqlFetchDomains,
     "select * from `domain`"
   );
 
@@ -72,19 +81,52 @@ bool JaxModel::getDomain(std::string host, JaxDomain& domain) {
   return true;
 }
 
-bool JaxModel::fetch(struct in6_addr& addr) {
+bool JaxModel::isFakeIPv6(std::string s) {
+  return s.find("::ffff:") == 0;
+}
+
+std::string JaxModel::toStringIPv4(std::string s) {
+  if (!isFakeIPv6(s)) { return ""; }
+  return s.substr(7);
+}
+
+bool JaxModel::fetch(struct in6_addr& localAddr, struct in6_addr& remoteAddr) {
   prepare();
-  std::string addrStr = Jax::toString(addr);
-  Jax::debug("Looking up IP %s", addrStr.c_str());
-  sqlFetch->setString(1, addrStr);
-  if (!sqlFetch->execute()) { return false; }
-  sql::ResultSet *resultSet = sqlFetch->getResultSet();
-  if (!resultSet) { return false; }
-  if (!resultSet->next()) { delete resultSet; return false; }
+  std::string local = Jax::toString(localAddr);
+  std::string remote = Jax::toString(remoteAddr);
+  sql::ResultSet *resultSet = NULL;
+  Jax::debug("Looking up IP %s from %s", local.c_str(), remote.c_str());
+
+  if (isFakeIPv6(local)) {
+    resultSet = fetchIPv4(toStringIPv4(local), toStringIPv4(remote));
+  } else {
+    resultSet = fetchIPv6(local);
+  }
+
+  if (!resultSet) {
+    return false;
+  } else if (!resultSet->next()) {
+    delete resultSet;
+    return false;
+  }
+
   deviceId = resultSet->getInt(1);
   learnMode = resultSet->getInt(2);
   delete resultSet;
   return true;
+}
+
+sql::ResultSet *JaxModel::fetchIPv6(std::string local) {
+  sqlFetchIPv6->setString(1, local);
+  if (!sqlFetchIPv6->execute()) { return NULL; }
+  return sqlFetchIPv6->getResultSet();
+}
+
+sql::ResultSet *JaxModel::fetchIPv4(std::string local, std::string remote) {
+  sqlFetchIPv4->setString(1, local);
+  sqlFetchIPv4->setString(2, remote);
+  if (!sqlFetchIPv4->execute()) { return NULL; }
+  return sqlFetchIPv4->getResultSet();
 }
 
 void JaxModel::insertActivity(int id, bool learnMode) {
