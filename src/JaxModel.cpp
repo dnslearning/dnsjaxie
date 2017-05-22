@@ -12,6 +12,8 @@ void JaxModel::prepare() {
   if (!sqlConnection) {
     sqlConnection = sqlDriver->connect(host, user, pass);
     if (!sqlConnection) { throw std::runtime_error("No database connection"); }
+    const bool yes = 1;
+    sqlConnection->setClientOption("OPT_RECONNECT", &yes);
     sqlConnection->setSchema(name);
   }
 
