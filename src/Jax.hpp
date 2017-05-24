@@ -50,6 +50,9 @@ public:
   static std::vector<std::string> split(const std::string& s, char delim);
   static std::string toString(struct in6_addr& addr);
   static std::string toString(std::vector<std::string>& parts, const char *delim);
+  static bool isFakeIPv6(std::string s);
+  static std::string convertFakeIPv6(std::string s);
+  static std::vector<char> toVector(std::string s);
 };
 
 struct JaxPacket {
@@ -73,10 +76,6 @@ typedef class JaxModel JaxModel;
 
 typedef struct JaxPacket JaxPacket;
 typedef struct JaxDnsHeader JaxDnsHeader;
-typedef struct JaxDnsQuestionHeader JaxDnsQuestionHeader;
-typedef struct JaxDnsQuestion JaxDnsQuestion;
-typedef struct JaxDnsAnswer JaxDnsAnswer;
-typedef struct JaxDnsAnswerHeader JaxDnsAnswerHeader;
 typedef struct JaxDomain JaxDomain;
 
 

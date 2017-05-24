@@ -1,5 +1,6 @@
 
 #include "JaxModel.hpp"
+#include "JaxClient.hpp"
 
 #define prepareSql(symbol, sql) symbol = symbol ? symbol : sqlConnection->prepareStatement(sql);
 
@@ -83,26 +84,15 @@ bool JaxModel::getDomain(std::string host, JaxDomain& domain) {
   return true;
 }
 
-bool JaxModel::isFakeIPv6(std::string s) {
-  return s.find("::ffff:") == 0;
-}
-
-std::string JaxModel::toStringIPv4(std::string s) {
-  if (!isFakeIPv6(s)) { return ""; }
-  return s.substr(7);
-}
-
-bool JaxModel::fetch(struct in6_addr& localAddr, struct in6_addr& remoteAddr) {
+bool JaxModel::fetch(JaxClient& client) {
   prepare();
-  std::string local = Jax::toString(localAddr);
-  std::string remote = Jax::toString(remoteAddr);
   sql::ResultSet *resultSet = NULL;
-  Jax::debug("Looking up IP %s from %s", local.c_str(), remote.c_str());
+  Jax::debug("Looking up IP %s from %s", client.local.c_str(), client.remote.c_str());
 
-  if (isFakeIPv6(local)) {
-    resultSet = fetchIPv4(toStringIPv4(local), toStringIPv4(remote));
+  if (client.ipv4) {
+    resultSet = fetchIPv4(client.local, client.remote);
   } else {
-    resultSet = fetchIPv6(local);
+    resultSet = fetchIPv6(client.local);
   }
 
   if (!resultSet) {
