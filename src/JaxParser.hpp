@@ -12,43 +12,41 @@ struct JaxDnsHeader {
   unsigned short arcount; // Additional Section
 } __attribute__ ((packed));
 
-struct JaxDnsQuestionHeader {
-  unsigned short qtype;
-  unsigned short qclass;
-} __attribute__ ((packed));
-
-struct JaxDnsQuestion {
-  struct JaxDnsQuestionHeader header;
-  std::string domain;
-};
-
-struct JaxDnsAnswerHeader {
-  unsigned short atype;
-  unsigned short aclass;
+struct JaxDnsResourceHeader {
+  unsigned short rtype;
+  unsigned short rclass;
   unsigned int ttl;
   unsigned short dataLen;
 } __attribute__ ((packed));
 
-struct JaxDnsAnswer {
-  struct JaxDnsAnswerHeader header;
+struct JaxDnsResource {
   std::string domain;
-  bool ipv6;
-  in_addr addr4;
-  in6_addr addr6;
+  struct JaxDnsResourceHeader header;
+  std::vector<char> raw;
 };
 
 class JaxParser {
 public:
   JaxDnsHeader header;
-  std::list<JaxDnsQuestion> questions;
-  std::list<JaxDnsAnswer> answers;
+  std::list<JaxDnsResource> questions;
+  std::list<JaxDnsResource> answers;
+  std::list<JaxDnsResource> auths;
+  std::list<JaxDnsResource> additional;
 
   bool decode(JaxPacket& p);
   void decodeQuestion(JaxPacket& p);
   void decodeAnswer(JaxPacket& p);
+  void decodeAuthority(JaxPacket& p);
+  void decodeResource(JaxPacket& p);
+
+  struct JaxDnsResource readResource(JaxPacket& p, bool r);
+  void writeResource(JaxPacket& p, JaxDnsResource res, bool r);
+
   bool encode(JaxPacket& p);
-  void encodeQuestion(JaxPacket& p, JaxDnsQuestion& question);
-  void encodeAnswer(JaxPacket& p, JaxDnsAnswer& answer);
+  void encodeQuestion(JaxPacket& p, JaxDnsResource& question);
+  void encodeAnswer(JaxPacket& p, JaxDnsResource& answer);
+  void encodeAuthority(JaxPacket& p, JaxDnsResource& authority);
+  void encodeResource(JaxPacket& p, JaxDnsResource& resource);
 
   bool isResponse() { return header.flags & FLAG_RESPONSE; }
   bool isAuthAnswer() { return header.flags & FLAG_AUTH_ANSWER; }
@@ -67,6 +65,7 @@ public:
   static void writeData(JaxPacket& p, const void *buffer, unsigned int len);
   static void writeString(JaxPacket& p, std::string str);
   static void writeStringLiteral(JaxPacket &p, std::string str);
+  static std::vector<char> encodeString(std::string s);
 
   static const unsigned short FLAG_RESPONSE = 1 << 15;
   static const unsigned short FLAG_AUTH_ANSWER = 1 << 10;

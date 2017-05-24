@@ -166,6 +166,14 @@ void JaxServer::recvQuestion(
   client.id = parser.header.id;
   client.addr = senderAddress;
   client.listenAddress = recvAddress;
+  client.local = Jax::toString(recvAddress);
+  client.remote = Jax::toString(senderAddress.sin6_addr);
+  client.ipv4 = Jax::isFakeIPv6(client.local);
+
+  if (client.ipv4) {
+    client.local = Jax::convertFakeIPv6(client.local);
+    client.remote = Jax::convertFakeIPv6(client.remote);
+  }
 
   if (!isAccessEnabled(client)) {
     sendFakeResponse(client);
@@ -193,9 +201,11 @@ bool JaxServer::isAccessEnabled(JaxClient& client) {
     }
   }
 
-  if (!model.fetch(client.listenAddress, client.addr.sin6_addr)) {
+  if (!model.fetch(client)) {
     return false;
   }
+
+  model.insertActivity(model.deviceId, model.learnMode);
 
   for (auto q : parser.questions) {
     model.insertTimeline(model.deviceId, q.domain);
@@ -218,13 +228,25 @@ void JaxServer::sendFakeResponse(JaxClient& client) {
   parser.header.flags = JaxParser::FLAG_RESPONSE | JaxParser::FLAG_RECURSION_AVAILABLE;
 
   for (auto question : parser.questions) {
-    JaxDnsAnswer answer = {};
+    JaxDnsResource answer = {};
     answer.domain = question.domain;
-    answer.ipv6 = true;
-    answer.addr6 = client.listenAddress;
     answer.header.ttl = 1;
-    answer.header.atype = answer.ipv6 ? 28 : 1;
-    answer.header.aclass = 1;
+    answer.header.rtype = client.ipv4 ? 1 : 28;
+    answer.header.rclass = 1;
+    answer.header.dataLen = client.ipv4 ? sizeof(in_addr) : sizeof(in6_addr);
+
+    if (client.ipv4) {
+      struct in_addr addr4;
+      inet_pton(AF_INET, client.local.c_str(), &addr4);
+      answer.raw.resize(sizeof(addr4));
+      memcpy(answer.raw.data(), &addr4, sizeof(addr4));
+    } else {
+      struct in6_addr addr6;
+      inet_pton(AF_INET6, client.local.c_str(), &addr6);
+      answer.raw.resize(sizeof(addr6));
+      memcpy(answer.raw.data(), &addr6, sizeof(addr6));
+    }
+
     parser.answers.push_back(answer);
   }
 
