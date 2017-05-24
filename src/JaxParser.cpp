@@ -171,12 +171,10 @@ unsigned char JaxParser::peekByte(JaxPacket p) {
 }
 
 bool JaxParser::encode(JaxPacket& p) {
-  //if (questions.empty() && answers.empty()) {
-  //  Jax::debug("Refusing to encode empty DNS packet");
-  //  return false;
-  //}
-
-  //auths.clear();
+  if (questions.empty() && answers.empty() && auths.empty() && additional.empty()) {
+    Jax::debug("Refusing to encode empty DNS packet");
+    return false;
+  }
 
   header.id = htons(header.id);
   header.qdcount = htons(questions.size());
