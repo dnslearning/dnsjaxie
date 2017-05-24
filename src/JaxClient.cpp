@@ -1,5 +1,6 @@
 
 #include "JaxClient.hpp"
+#include "JaxServer.hpp"
 
 JaxClient::JaxClient() {
   startTime = time(NULL);
