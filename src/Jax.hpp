@@ -56,14 +56,6 @@ public:
   static std::vector<char> toVector(std::string s);
 };
 
-/*
-struct JaxPacket {
-  char *input;
-  unsigned int inputSize;
-  unsigned int pos;
-};
-*/
-
 struct JaxDomain {
   std::string host;
   bool allow;
