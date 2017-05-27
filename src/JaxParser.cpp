@@ -103,6 +103,14 @@ void JaxParser::writeQuestion(JaxPacket& p, JaxDnsResource& res) {
 
 void JaxParser::writeResource(JaxPacket& p, JaxDnsResource& res) {
   p.writeString(res.domain);
+
+  switch (res.header.rtype) {
+  case 2:
+  case 5:
+    res.raw = p.compress(res.raw, sizeof(res.header));
+    break;
+  }
+
   res.header.rtype = htons(res.header.rtype);
   res.header.rclass = htons(res.header.rclass);
   res.header.ttl = htonl(res.header.ttl);

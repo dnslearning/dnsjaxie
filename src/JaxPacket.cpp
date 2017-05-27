@@ -84,6 +84,16 @@ void JaxPacket::writeString(std::string str) {
     return;
   }
 
+  auto exists = lookup.find(str);
+
+  if (exists != lookup.end()) {
+    unsigned short offset = 0b11000000 | htons(exists->second);
+    writeByte(offset & 0xFF);
+    writeByte(offset >> 8);
+    return;
+  }
+
+  lookup[str] = pos;
   auto parts = Jax::split(str, '.');
   for (auto str : parts) { writeStringLiteral(str); }
   writeByte('\0');
@@ -100,4 +110,28 @@ std::vector<char> JaxPacket::encodeString(std::string s) {
   p.writeString(s);
   p.raw.resize(p.pos);
   return p.raw;
+}
+
+std::string JaxPacket::decodeString(std::vector<char> v) {
+  return JaxPacket(v).readString();
+}
+
+std::vector<char> JaxPacket::compress(std::vector<char> v, int relative) {
+  std::string s = decodeString(v);
+  if (s.empty()) { return v; }
+  auto exists = lookup.find(s);
+
+  if (exists == lookup.end()) {
+    lookup[s] = pos + relative;
+    return v;
+  }
+
+  return encodeShort(0b11000000 | htons(exists->second));
+}
+
+std::vector<char> JaxPacket::encodeShort(unsigned short x) {
+  std::vector<char> v(2);
+  v[0] = x & 0xFF;
+  v[1] = x >> 8;
+  return v;
 }
