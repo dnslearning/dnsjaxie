@@ -1,5 +1,6 @@
 
 #include "JaxClient.hpp"
+#include "JaxPacket.hpp"
 #include "JaxServer.hpp"
 
 JaxClient::JaxClient() {
@@ -39,10 +40,7 @@ void JaxClient::recvAnswer(JaxServer& server) {
     return;
   }
 
-  JaxPacket packet;
-  packet.input = recvBuffer;
-  packet.inputSize = recvSize;
-  packet.pos = 0;
+  JaxPacket packet(recvBuffer, recvSize);
 
   if (!server.parser.decode(packet)) {
     Jax::debug("Real DNS server sent us a packet we cannot decode");
@@ -53,17 +51,12 @@ void JaxClient::recvAnswer(JaxServer& server) {
     answer.header.ttl = 1;
   }
 
-  char encodeBuffer[1024];
-  jax_zero(encodeBuffer);
-  
-  packet.input = encodeBuffer;
-  packet.inputSize = sizeof(encodeBuffer);
-  packet.pos = 0;
+  packet = JaxPacket(1024);
 
   if (!server.parser.encode(packet)) {
     Jax::debug("Real DNS server sent us a packet we cannot encode");
     return;
   }
 
-  server.sendResponse(*this, encodeBuffer, packet.pos);
+  server.sendResponse(*this, packet);
 }
