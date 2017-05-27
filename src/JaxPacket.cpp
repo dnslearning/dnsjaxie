@@ -1,13 +1,15 @@
 
 #include "JaxPacket.hpp"
 
-JaxPacket::JaxPacket(unsigned int size) {
-  raw = std::vector<char>(size);
+JaxPacket::JaxPacket(std::vector<char> v) : raw(v) {
   pos = 0;
 }
 
-JaxPacket::JaxPacket(char *buffer, unsigned int len) {
-  raw = std::vector<char>(buffer, buffer + len);
+JaxPacket::JaxPacket(unsigned int size) : raw(size) {
+  pos = 0;
+}
+
+JaxPacket::JaxPacket(char *buffer, unsigned int len) : raw(buffer, buffer + len) {
   pos = 0;
 }
 
