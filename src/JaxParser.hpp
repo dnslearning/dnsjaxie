@@ -2,6 +2,7 @@
 #pragma once
 
 #include "Jax.hpp"
+#include "JaxPacket.hpp"
 
 struct JaxDnsHeader {
   unsigned short id;
@@ -34,38 +35,18 @@ public:
   std::list<JaxDnsResource> additional;
 
   bool decode(JaxPacket& p);
-  void decodeQuestion(JaxPacket& p);
-  void decodeAnswer(JaxPacket& p);
-  void decodeAuthority(JaxPacket& p);
-  void decodeResource(JaxPacket& p);
-
-  struct JaxDnsResource readResource(JaxPacket& p, bool r);
-  void writeResource(JaxPacket& p, JaxDnsResource res, bool r);
-
   bool encode(JaxPacket& p);
-  void encodeQuestion(JaxPacket& p, JaxDnsResource& question);
-  void encodeAnswer(JaxPacket& p, JaxDnsResource& answer);
-  void encodeAuthority(JaxPacket& p, JaxDnsResource& authority);
-  void encodeResource(JaxPacket& p, JaxDnsResource& resource);
+
+  JaxDnsResource readQuestion(JaxPacket& p);
+  JaxDnsResource readResource(JaxPacket& p);
+  void writeQuestion(JaxPacket& p, JaxDnsResource& res);
+  void writeResource(JaxPacket& p, JaxDnsResource& res);
 
   bool isResponse() { return header.flags & FLAG_RESPONSE; }
   bool isAuthAnswer() { return header.flags & FLAG_AUTH_ANSWER; }
   bool isTruncated() { return header.flags & FLAG_TRUNCATED; }
   bool isRecursionDesired() { return header.flags & FLAG_RECURSION_DESIRED; }
   bool isRecursionAvail() { return header.flags & FLAG_RECURSION_AVAILABLE; }
-
-  static unsigned char readByte(JaxPacket& p);
-  static unsigned char peekByte(JaxPacket p);
-  static void readData(JaxPacket& p, void *buffer, unsigned int len);
-  static std::string readString(JaxPacket& p);
-  static std::string peekString(JaxPacket p, unsigned int pos);
-  static std::string readStringLiteral(JaxPacket& p, unsigned char len);
-  static std::string readStringCompressed(JaxPacket& p, unsigned char c);
-  static void writeByte(JaxPacket& p, char c);
-  static void writeData(JaxPacket& p, const void *buffer, unsigned int len);
-  static void writeString(JaxPacket& p, std::string str);
-  static void writeStringLiteral(JaxPacket &p, std::string str);
-  static std::vector<char> encodeString(std::string s);
 
   static const unsigned short FLAG_RESPONSE = 1 << 15;
   static const unsigned short FLAG_AUTH_ANSWER = 1 << 10;

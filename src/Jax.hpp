@@ -50,16 +50,19 @@ public:
   static std::vector<std::string> split(const std::string& s, char delim);
   static std::string toString(struct in6_addr& addr);
   static std::string toString(std::vector<std::string>& parts, const char *delim);
+  static std::string toString(std::vector<char>& v);
   static bool isFakeIPv6(std::string s);
   static std::string convertFakeIPv6(std::string s);
   static std::vector<char> toVector(std::string s);
 };
 
+/*
 struct JaxPacket {
   char *input;
   unsigned int inputSize;
   unsigned int pos;
 };
+*/
 
 struct JaxDomain {
   std::string host;
@@ -73,10 +76,11 @@ typedef class JaxServer JaxServer;
 typedef class JaxClient JaxClient;
 typedef class JaxParser JaxParser;
 typedef class JaxModel JaxModel;
+typedef class JaxPacket JaxPacket;
 
-typedef struct JaxPacket JaxPacket;
 typedef struct JaxDnsHeader JaxDnsHeader;
+typedef struct JaxDnsResourceHeader JaxDnsResourceHeader;
+typedef struct JaxDnsResource JaxDnsResource;
 typedef struct JaxDomain JaxDomain;
-
 
 #define jax_zero(s) memset(&(s), 0, sizeof(s));

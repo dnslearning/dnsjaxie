@@ -1,5 +1,6 @@
 
 #include "JaxServer.hpp"
+#include "JaxPacket.hpp"
 
 JaxServer::JaxServer() {
   bindAddress.sin6_family = AF_INET6;
@@ -139,10 +140,7 @@ bool JaxServer::recvQuestion() {
     return false;
   }
 
-  JaxPacket packet;
-  packet.pos = 0;
-  packet.input = recvBuffer;
-  packet.inputSize = recvSize;
+  JaxPacket packet(recvBuffer, recvSize);
 
   if (!parser.decode(packet)) {
     Jax::debug("Skipping a DNS packet");
@@ -217,12 +215,6 @@ bool JaxServer::isAccessEnabled(JaxClient& client) {
 void JaxServer::sendFakeResponse(JaxClient& client) {
   Jax::debug("Sending fake response");
 
-  char buffer[1024];
-  JaxPacket packet;
-  packet.input = buffer;
-  packet.inputSize = sizeof(buffer);
-  packet.pos = 0;
-
   parser.header = {};
   parser.header.id = client.id;
   parser.header.flags = JaxParser::FLAG_RESPONSE | JaxParser::FLAG_RECURSION_AVAILABLE;
@@ -252,18 +244,20 @@ void JaxServer::sendFakeResponse(JaxClient& client) {
 
   parser.questions.clear();
 
+  JaxPacket packet(1024);
+
   if (!parser.encode(packet)) {
     Jax::debug("Failed to encode a fake response packet");
     return;
   }
 
-  sendtofrom(sock, buffer, packet.pos, client.addr, client.listenAddress);
+  sendtofrom(sock, packet.raw.data(), packet.raw.size(), client.addr, client.listenAddress);
 }
 
 void JaxServer::forwardRequest(JaxClient& client, JaxPacket& packet) {
   int ok = sendto(
     client.outboundSocket,
-    packet.input, packet.inputSize,
+    packet.raw.data(), packet.raw.size(),
     MSG_DONTWAIT,
     (sockaddr*)&realDnsAddr, sizeof(realDnsAddr)
   );
@@ -283,14 +277,14 @@ int JaxServer::createOutboundSocket() {
   return outboundSocket;
 }
 
-void JaxServer::sendResponse(JaxClient& client, const char *buffer, unsigned int bufferSize) {
+void JaxServer::sendResponse(JaxClient& client, JaxPacket& packet) {
   if (!sock) {
     Jax::debug("Not sending a packet because socket is gone");
     return;
   }
 
   Jax::debug("Sending response to client [%s]:%d", Jax::toString(client.addr.sin6_addr).c_str(), ntohs(client.addr.sin6_port));
-  sendtofrom(sock, buffer, bufferSize, client.addr, client.listenAddress);
+  sendtofrom(sock, packet.raw.data(), packet.raw.size(), client.addr, client.listenAddress);
 }
 
 void JaxServer::sendtofrom(int s, const char *buffer, unsigned int bufferSize, struct sockaddr_in6& to, struct in6_addr& from) {

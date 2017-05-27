@@ -49,6 +49,10 @@ std::string Jax::toString(std::vector<std::string>& parts, const char *delim) {
   return s;
 }
 
+std::string Jax::toString(std::vector<char>& v) {
+  return std::string(v.begin(), v.end());
+}
+
 bool Jax::isFakeIPv6(std::string s) {
   return s.find("::ffff:") == 0;
 }

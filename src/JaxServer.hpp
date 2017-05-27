@@ -29,7 +29,7 @@ public:
   void tickListener();
   bool recvQuestion();
   void recvQuestion(JaxPacket& packet, struct sockaddr_in6& senderAddress, struct in6_addr& recvAddress);
-  void sendResponse(JaxClient& client, const char *buffer, unsigned int bufferSize);
+  void sendResponse(JaxClient& client, JaxPacket& packet);
   void forwardRequest(JaxClient& client, JaxPacket& packet);
   void sendFakeResponse(JaxClient& client);
   bool isAccessEnabled(JaxClient& client);
