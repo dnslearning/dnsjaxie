@@ -79,8 +79,10 @@ void JaxModel::prepare() {
 }
 
 bool JaxModel::getDomain(std::string host, JaxDomain& domain) {
-  if (domains.find(host) == domains.end()) { return false; }
-  domain = domains[host];
+  std::string simple = Jax::simplifyDomain(host);
+  auto exists = domains.find(simple);
+  if (exists == domains.end()) { return false; }
+  domain = exists->second;
   return true;
 }
 
