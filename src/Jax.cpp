@@ -65,3 +65,10 @@ std::string Jax::convertFakeIPv6(std::string s) {
 std::vector<char> Jax::toVector(std::string s) {
   return std::vector<char>(s.begin(), s.end());
 }
+
+std::string Jax::simplifyDomain(std::string s) {
+  if (s.empty()) { return s; }
+  std::vector<std::string> parts = split(s, '.');
+  if (parts.size() <= 2) { return s; }
+  return parts[parts.size() - 2] + "." + parts[parts.size() - 1];
+}

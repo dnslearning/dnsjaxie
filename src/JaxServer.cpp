@@ -242,7 +242,8 @@ void JaxServer::sendFakeResponse(JaxClient& client) {
     parser.answers.push_back(answer);
   }
 
-  parser.questions.clear();
+  parser.auths.clear();
+  //parser.additional.clear();
 
   JaxPacket packet(1024);
 
