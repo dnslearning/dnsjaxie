@@ -18,6 +18,7 @@ public:
   std::string pass = "";
   std::string host = "localhost";
   std::unordered_map<std::string, JaxDomain> domains;
+  std::unordered_map<int, int> lastActivity;
   bool learnMode;
   int deviceId;
 

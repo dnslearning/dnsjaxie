@@ -54,7 +54,7 @@ bool JaxServer::tickSelect() {
     tickListener();
   }
 
-  for (auto it = clients.begin(); it != clients.end(); ++it) {
+  for (auto it = clients.begin(); it != clients.end(); ) {
     JaxClient& client = *it;
 
     if (FD_ISSET(client.outboundSocket, &active)) {
@@ -69,8 +69,10 @@ bool JaxServer::tickSelect() {
     }
 
     if (!client.outboundSocket) {
-      it = clients.erase(it);
       if (client.originalSocket) { FD_CLR(client.originalSocket, &readFileDescs); }
+      it = clients.erase(it);
+    } else {
+      ++it;
     }
   }
 
@@ -188,9 +190,10 @@ void JaxServer::recvQuestion(
 bool JaxServer::isAccessEnabled(JaxClient& client) {
   for (auto q : parser.questions) {
     JaxDomain domain;
+    std::string top = Jax::toTopLevel(q.domain);
     Jax::debug("Domain: %s", q.domain.c_str());
 
-    if (model.getDomain(q.domain, domain)) {
+    if (model.getDomain(top, domain)) {
       if (domain.allow) {
         return true;
       } else if (domain.deny) {
@@ -206,6 +209,7 @@ bool JaxServer::isAccessEnabled(JaxClient& client) {
   model.insertActivity(model.deviceId, model.learnMode);
 
   for (auto q : parser.questions) {
+    // TODO add domain ignore here
     model.insertTimeline(model.deviceId, q.domain);
   }
 
@@ -217,12 +221,12 @@ void JaxServer::sendFakeResponse(JaxClient& client) {
 
   parser.header = {};
   parser.header.id = client.id;
-  parser.header.flags = JaxParser::FLAG_RESPONSE | JaxParser::FLAG_RECURSION_AVAILABLE;
-
+  parser.header.flags = JaxParser::FLAG_RESPONSE | JaxParser::FLAG_RECURSION_AVAILABLE | htons(3);
+/*
   for (auto question : parser.questions) {
     JaxDnsResource answer = {};
     answer.domain = question.domain;
-    answer.header.ttl = 1;
+    answer.header.ttl = 15;
     answer.header.rtype = client.ipv4 ? 1 : 28;
     answer.header.rclass = 1;
     answer.header.dataLen = client.ipv4 ? sizeof(in_addr) : sizeof(in6_addr);
@@ -241,9 +245,10 @@ void JaxServer::sendFakeResponse(JaxClient& client) {
 
     parser.answers.push_back(answer);
   }
+  */
 
-  parser.auths.clear();
-  //parser.additional.clear();
+  //parser.questions.clear();
+  parser.answers.clear();
 
   JaxPacket packet(1024);
 

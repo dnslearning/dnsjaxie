@@ -18,39 +18,37 @@ void JaxModel::prepare() {
     sqlConnection->setSchema(name);
   }
 
+  //if (!sqlConnection->isValid()) {
+  //  sqlConnection->reconnect();
+  //}
+
   prepareSql(sqlFetchIPv6,
-    "select `id`, `learnMode` "
-    "from `device` where (`listen_ipv6` = ?) "
+    "select `id`, `study` "
+    "from `device` where (`ipv6` = ?) "
     "limit 1"
   );
 
   prepareSql(sqlFetchIPv4,
-    "select `device`.`id`, `device`.`learnMode` "
-    "from `device_ipv4` "
-    "join `device` on (`device_ipv4`.`device_id` = `device`.`id`) "
-    "where (`device_ipv4`.`local` = ?) and (`device_ipv4`.`remote` = ?)"
+    "select `device`.`id`, `device`.`study` "
+    "from `ipv4` "
+    "join `device` on (`ipv4`.`device_id` = `device`.`id`) "
+    "where (`ipv4`.`local` = ?) and (`ipv4`.`remote` = ?)"
   );
 
   prepareSql(sqlInsertActivity,
-    "insert into `device_activity` set "
+    "insert into `activity` set "
     " `device_id` = ?, "
-    " `time` = floor(unix_timestamp() / 60) * 60, "
-    " `dns` = 1, "
-    " `learnMode` = ? "
-    "on duplicate key update `dns` = `dns` + 1"
+    " `time` = unix_timestamp(), "
+    " `seconds` = 15, "
+    " `study` = ? "
   );
 
   prepareSql(sqlInsertTimeline,
     "insert into `timeline` set "
     " `device_id` = ?, "
+    " `time` = unix_timestamp(), "
     " `type` = 'domain', "
-    " `firstSeen` = unix_timestamp(), "
-    " `lastSeen` = unix_timestamp(), "
-    " `hits` = 1, "
     " `data` = ? "
-    "on duplicate key update "
-    " `hits` = `hits` + 1, "
-    " `lastSeen` = unix_timestamp()"
   );
 
   prepareSql(sqlFetchDomains,
@@ -79,10 +77,8 @@ void JaxModel::prepare() {
 }
 
 bool JaxModel::getDomain(std::string host, JaxDomain& domain) {
-  std::string simple = Jax::simplifyDomain(host);
-  auto exists = domains.find(simple);
-  if (exists == domains.end()) { return false; }
-  domain = exists->second;
+  if (domains.find(host) == domains.end()) { return false; }
+  domain = domains[host];
   return true;
 }
 
@@ -125,6 +121,19 @@ sql::ResultSet *JaxModel::fetchIPv4(std::string local, std::string remote) {
 
 void JaxModel::insertActivity(int id, bool learnMode) {
   prepare();
+
+  int now = (int)time(NULL);
+  auto then = lastActivity.find(id);
+
+  if (then != lastActivity.end()) {
+    int age = now - then->second;
+
+    if (age < 15) {
+      return;
+    }
+  }
+
+  lastActivity[id] = now;
   sqlInsertActivity->setInt(1, id);
   sqlInsertActivity->setInt(2, learnMode ? 1 : 0);
   sqlInsertActivity->execute();

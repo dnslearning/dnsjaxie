@@ -54,7 +54,7 @@ public:
   static bool isFakeIPv6(std::string s);
   static std::string convertFakeIPv6(std::string s);
   static std::vector<char> toVector(std::string s);
-  static std::string simplifyDomain(std::string s);
+  static std::string toTopLevel(std::string s);
 };
 
 struct JaxDomain {
