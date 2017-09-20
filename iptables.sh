@@ -1,5 +1,7 @@
 #/bin/bash
 
+# This has to be ran by root
+
 if [[ ! $(/sbin/iptables -L -t nat | grep 14222) ]]
 then
   /sbin/iptables -t nat -A PREROUTING -p udp --dport 53 -j DNAT --to-destination :14222
