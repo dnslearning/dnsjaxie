@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 # This has to be ran by root
 
