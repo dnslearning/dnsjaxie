@@ -4,3 +4,6 @@
 
 # Make sure the DNS server is running
 * * * * * /home/dnsjaxie/cron.sh
+
+# Kill every 30 minutes while we are in Beta
+*/30 * * * * killall dnsjaxie
