@@ -1,0 +1,6 @@
+
+# Automatically pull changes every 15 minutes
+*/15 * * * * cd /home/dnsjaxie && git pull
+
+# Make sure the DNS server is running
+* * * * * /home/dnsjaxie/cron.sh
