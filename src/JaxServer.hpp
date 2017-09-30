@@ -17,6 +17,7 @@ public:
   JaxModel model;
   JaxParser parser;
   sockaddr_in realDnsAddr;
+  std::vector<in_addr_t> hide;
 
   JaxServer();
   ~JaxServer();

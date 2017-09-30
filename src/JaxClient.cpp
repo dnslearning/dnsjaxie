@@ -48,6 +48,17 @@ void JaxClient::recvAnswer(JaxServer& server) {
   }
 
   for (auto& answer : server.parser.answers) {
+    if (answer.header.rtype == 1) {
+      in_addr_t *answerIp = (in_addr_t*)answer.raw.data();
+
+      for (auto ip : server.hide) {
+        if (ip == *answerIp) {
+          server.sendFakeResponse(*this);
+          return;
+        }
+      }
+    }
+
     answer.header.ttl = 1;
   }
 

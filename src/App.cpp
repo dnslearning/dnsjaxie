@@ -58,6 +58,9 @@ void App::configure(std::string key, std::string value) {
     server.realDnsAddr.sin_addr.s_addr = inet_addr(value.c_str());
   } else if (key == "dnsport") {
     server.realDnsAddr.sin_port = htons((unsigned short)std::stoi(value));
+  } else if (key == "dnshide") {
+    in_addr_t addr = inet_addr(value.c_str());
+    server.hide.push_back(addr);
   } else {
     Jax::debug("Unknown config key '%s'", key.c_str());
   }
