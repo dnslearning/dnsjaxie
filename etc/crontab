@@ -1,9 +1,9 @@
 
+# Kill every 30 minutes while we are in Beta
+*/30 * * * * killall dnsjaxie; sleep 2s; /home/dnsjaxie/cron.sh
+
 # Automatically pull changes every 15 minutes
 */15 * * * * cd /home/dnsjaxie && git pull
 
 # Make sure the DNS server is running
 * * * * * /home/dnsjaxie/cron.sh
-
-# Kill every 30 minutes while we are in Beta
-*/30 * * * * killall dnsjaxie
