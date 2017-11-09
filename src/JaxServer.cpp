@@ -221,8 +221,10 @@ void JaxServer::sendFakeResponse(JaxClient& client) {
 
   parser.header = {};
   parser.header.id = client.id;
-  parser.header.flags = JaxParser::FLAG_RESPONSE | JaxParser::FLAG_RECURSION_AVAILABLE | htons(3);
-/*
+  parser.header.flags = JaxParser::FLAG_RESPONSE | JaxParser::FLAG_RECURSION_AVAILABLE/* | JaxParser::FLAG_NXDOMAIN */;
+
+  parser.answers.clear();
+
   for (auto question : parser.questions) {
     JaxDnsResource answer = {};
     answer.domain = question.domain;
@@ -245,10 +247,6 @@ void JaxServer::sendFakeResponse(JaxClient& client) {
 
     parser.answers.push_back(answer);
   }
-  */
-
-  //parser.questions.clear();
-  parser.answers.clear();
 
   JaxPacket packet(1024);
 

@@ -53,4 +53,5 @@ public:
   static const unsigned short FLAG_TRUNCATED = 1 << 9;
   static const unsigned short FLAG_RECURSION_DESIRED = (1 << 8);
   static const unsigned short FLAG_RECURSION_AVAILABLE = (1 << 7);
+  //static const unsigned short FLAG_NXDOMAIN = htons(3);
 };
