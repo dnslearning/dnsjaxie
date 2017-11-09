@@ -223,6 +223,8 @@ void JaxServer::sendFakeResponse(JaxClient& client) {
   parser.header.id = client.id;
   parser.header.flags = JaxParser::FLAG_RESPONSE | JaxParser::FLAG_RECURSION_AVAILABLE/* | JaxParser::FLAG_NXDOMAIN */;
 
+  parser.additional.clear();
+  parser.auths.clear();
   parser.answers.clear();
 
   for (auto question : parser.questions) {
