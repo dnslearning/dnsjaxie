@@ -69,11 +69,10 @@ void JaxModel::prepare() {
     domain.deny = resultSet->getBoolean("deny");
     domain.ignore = resultSet->getBoolean("ignore");
     domains[domain.host] = domain;
-
-    Jax::debug("Domain: %s (allow=%d, deny=%d, ignore=%d)", domain.host.c_str(), domain.allow, domain.deny, domain.ignore);
   }
 
   delete resultSet;
+  Jax::debug("Loaded %d domains", domains.size());
 }
 
 bool JaxModel::getDomain(std::string host, JaxDomain& domain) {
