@@ -1,9 +1,8 @@
-
-# Kill every 30 minutes while we are in Beta
-*/30 * * * * killall dnsjaxie; sleep 2s; /home/dnsjaxie/cron.sh
-
 # Automatically pull changes every 15 minutes
-*/15 * * * * cd /home/dnsjaxie && git pull
+*/15 * * * * cd /home/dnsjaxie && git pull && make
+
+# Kill every 2 hours to workaround a mysql bug
+* */2 * * * killall dnsjaxie; sleep 2s; /home/dnsjaxie/cron.sh
 
 # Make sure the DNS server is running
 * * * * * /home/dnsjaxie/cron.sh
