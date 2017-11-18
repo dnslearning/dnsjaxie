@@ -2,7 +2,7 @@
 */15 * * * * cd /home/dnsjaxie && git pull && make
 
 # Kill every 2 hours to workaround a mysql bug
-* */2 * * * killall dnsjaxie; sleep 2s; /home/dnsjaxie/cron.sh
+0 */2 * * * killall dnsjaxie; sleep 2s; /home/dnsjaxie/cron.sh
 
 # Make sure the DNS server is running
 * * * * * /home/dnsjaxie/cron.sh
