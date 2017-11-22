@@ -208,9 +208,10 @@ bool JaxServer::isAccessEnabled(JaxClient& client) {
 
   model.insertActivity(model.deviceId, model.learnMode);
 
-  for (auto q : parser.questions) {
-    // TODO add domain ignore here
-    model.insertTimeline(model.deviceId, q.domain);
+  if (model.learnMode <=0 ) {
+    for (auto q : parser.questions) {
+      model.insertTimeline(model.deviceId, q.domain);
+    }
   }
 
   return model.learnMode <= 0;
