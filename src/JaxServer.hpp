@@ -6,12 +6,25 @@
 #include "JaxModel.hpp"
 #include "JaxParser.hpp"
 
+typedef struct timelineRow timelineRow;
+
 struct timelineRow {
   int id;
   std::string domain;
+
+  bool operator==(const timelineRow &other) const {
+    return (id == other.id) && (domain == other.domain);
+  }
 };
 
-typedef struct timelineRow timelineRow;
+namespace std {
+  template <>
+  struct hash<timelineRow> {
+    std::size_t operator()(const timelineRow& k) const {
+      return std::hash<int>()(k.id) ^ std::hash<std::string>()(k.domain);
+    }
+  };
+}
 
 class JaxServer {
 private:
@@ -19,7 +32,7 @@ private:
   std::list<JaxClient> clients;
   int sock;
   fd_set readFileDescs;
-  std::list<timelineRow> timelineQueue;
+  std::unordered_set<timelineRow> timelineQueue;
 public:
   sockaddr_in6 bindAddress;
   JaxModel model;
