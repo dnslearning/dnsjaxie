@@ -216,8 +216,7 @@ bool JaxServer::isAccessEnabled(JaxClient& client) {
   if (model.learnMode <= 0) {
     for (auto q : parser.questions) {
       // add to queue here
-      //model.insertTimeline(model.deviceId, q.domain);
-      timelineQueue.push_back({
+      timelineQueue.insert({
         id: model.deviceId,
         domain: q.domain
       });
