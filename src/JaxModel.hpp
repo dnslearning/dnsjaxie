@@ -3,6 +3,13 @@
 
 #include "Jax.hpp"
 
+// TODO sucks this goes here instead of somewhere it belongs
+struct device_t {
+  int id;
+  bool study;
+  int time;
+};
+
 class JaxModel {
 private:
   sql::Driver *sqlDriver;
@@ -18,6 +25,8 @@ public:
   std::string pass = "";
   std::string host = "localhost";
   std::unordered_map<std::string, JaxDomain> domains;
+  std::unordered_map<std::string, struct device_t> ipv4cache;
+  std::unordered_map<std::string, struct device_t> ipv6cache;
   std::unordered_map<int, int> lastActivity;
   bool learnMode;
   int deviceId;
@@ -25,8 +34,8 @@ public:
   void prepare();
   bool getDomain(std::string host, JaxDomain& domain);
   bool fetch(JaxClient& client);
-  sql::ResultSet *fetchIPv6(std::string local);
-  sql::ResultSet *fetchIPv4(std::string local, std::string remote);
+  bool fetchIPv6(std::string local);
+  bool fetchIPv4(std::string local, std::string remote);
   void insertActivity(int id, bool learnMode);
   void insertTimeline(int id, std::string domain);
 };

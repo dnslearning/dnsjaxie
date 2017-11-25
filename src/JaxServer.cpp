@@ -39,11 +39,11 @@ void JaxServer::listen() {
 
 void JaxServer::tick() {
   while (isRunning()) {
-    if (!tickSelect()) { return; }
+    tickSelect();
   }
 }
 
-bool JaxServer::tickSelect() {
+void JaxServer::tickSelect() {
   fd_set active = readFileDescs;
   int maxFileDesc = sock;
   for (auto client : clients) { maxFileDesc = std::max(maxFileDesc, client.outboundSocket); }
@@ -76,7 +76,12 @@ bool JaxServer::tickSelect() {
     }
   }
 
-  return activity > 0;
+  // drain queue
+  for (auto row : timelineQueue) {
+    model.insertTimeline(row.id, row.domain);
+  }
+
+  timelineQueue.clear();
 }
 
 void JaxServer::tickListener() {
@@ -208,9 +213,14 @@ bool JaxServer::isAccessEnabled(JaxClient& client) {
 
   model.insertActivity(model.deviceId, model.learnMode);
 
-  if (model.learnMode <=0 ) {
+  if (model.learnMode <= 0) {
     for (auto q : parser.questions) {
-      model.insertTimeline(model.deviceId, q.domain);
+      // add to queue here
+      //model.insertTimeline(model.deviceId, q.domain);
+      timelineQueue.push_back({
+        id: model.deviceId,
+        domain: q.domain
+      });
     }
   }
 

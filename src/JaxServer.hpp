@@ -6,12 +6,20 @@
 #include "JaxModel.hpp"
 #include "JaxParser.hpp"
 
+struct timelineRow {
+  int id;
+  std::string domain;
+};
+
+typedef struct timelineRow timelineRow;
+
 class JaxServer {
 private:
   bool stopped;
   std::list<JaxClient> clients;
   int sock;
   fd_set readFileDescs;
+  std::list<timelineRow> timelineQueue;
 public:
   sockaddr_in6 bindAddress;
   JaxModel model;
@@ -26,7 +34,7 @@ public:
   void closeSocket();
   void listen();
   void tick();
-  bool tickSelect();
+  void tickSelect();
   void tickListener();
   bool recvQuestion();
   void recvQuestion(JaxPacket& packet, struct sockaddr_in6& senderAddress, struct in6_addr& recvAddress);
