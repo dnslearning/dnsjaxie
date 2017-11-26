@@ -46,7 +46,9 @@ void App::configure() {
 }
 
 void App::configure(std::string key, std::string value) {
-  if (key == "dbuser") {
+  if (key.empty() || key[0] == '#') {
+    // Skip  a comment or empty line
+  } else if (key == "dbuser") {
     server.model.user = value;
   } else if (key == "dbpass") {
     server.model.pass = value;
