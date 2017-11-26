@@ -180,9 +180,46 @@ void JaxServer::recvQuestion(
     client.remote = Jax::convertFakeIPv6(client.remote);
   }
 
-  if (!isAccessEnabled(client)) {
+  // Cannot identify device
+  if (!model.fetch(client)) {
     sendFakeResponse(client);
     return;
+  }
+
+  bool allowed = false;
+
+  for (auto q : parser.questions) {
+    JaxDomain domain;
+    Jax::debug("Domain: %s", q.domain.c_str());
+
+    if (model.getDomain(q.domain, domain)) {
+      if (domain.allow) {
+        allowed = true;
+      } else if (domain.deny) {
+        sendFakeResponse(client);
+        return;
+      } else if (domain.redirect.length() > 0) {
+        sendRedirectResponse(client, domain.redirect);
+        return;
+      }
+    }
+  }
+
+  // Always log activity for identified devices
+  model.insertActivity(model.deviceId, model.learnMode);
+
+  // Attempt to access site not explicitly allowed in study mode
+  if (model.learnMode > 0 && !allowed) {
+    sendFakeResponse(client);
+    return;
+  }
+
+  for (auto q : parser.questions) {
+    // add to queue here
+    timelineQueue.insert({
+      id: model.deviceId,
+      domain: q.domain
+    });
   }
 
   client.outboundSocket = createOutboundSocket();
@@ -190,40 +227,6 @@ void JaxServer::recvQuestion(
   clients.push_back(client);
   FD_SET(client.outboundSocket, &readFileDescs);
   forwardRequest(client, p);
-}
-
-bool JaxServer::isAccessEnabled(JaxClient& client) {
-  for (auto q : parser.questions) {
-    JaxDomain domain;
-    std::string top = Jax::toTopLevel(q.domain);
-    Jax::debug("Domain: %s", q.domain.c_str());
-
-    if (model.getDomain(top, domain)) {
-      if (domain.allow) {
-        return true;
-      } else if (domain.deny) {
-        return false;
-      }
-    }
-  }
-
-  if (!model.fetch(client)) {
-    return false;
-  }
-
-  model.insertActivity(model.deviceId, model.learnMode);
-
-  if (model.learnMode <= 0) {
-    for (auto q : parser.questions) {
-      // add to queue here
-      timelineQueue.insert({
-        id: model.deviceId,
-        domain: q.domain
-      });
-    }
-  }
-
-  return model.learnMode <= 0;
 }
 
 void JaxServer::sendFakeResponse(JaxClient& client) {
@@ -264,6 +267,38 @@ void JaxServer::sendFakeResponse(JaxClient& client) {
 
   if (!parser.encode(packet)) {
     Jax::debug("Failed to encode a fake response packet");
+    return;
+  }
+
+  sendtofrom(sock, packet.raw.data(), packet.raw.size(), client.addr, client.listenAddress);
+}
+
+void JaxServer::sendRedirectResponse(JaxClient& client, const std::string redirect) {
+  Jax::debug("Sending redirected response");
+
+  parser.header = {};
+  parser.header.id = client.id;
+  parser.header.flags = JaxParser::FLAG_RESPONSE | JaxParser::FLAG_RECURSION_AVAILABLE;
+
+  parser.additional.clear();
+  parser.auths.clear();
+  parser.answers.clear();
+
+  for (auto question : parser.questions) {
+    JaxDnsResource answer = {};
+    answer.domain = question.domain;
+    answer.header.ttl = 15;
+    answer.header.rtype = 5; // CNAME
+    answer.header.rclass = 1;
+    answer.raw = JaxPacket::encodeString(redirect);
+    answer.header.dataLen = answer.raw.size();
+    parser.answers.push_back(answer);
+  }
+
+  JaxPacket packet(1024);
+
+  if (!parser.encode(packet)) {
+    Jax::debug("Failed to encode a redirect packet");
     return;
   }
 

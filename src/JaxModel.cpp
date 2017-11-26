@@ -68,6 +68,7 @@ void JaxModel::prepare() {
     domain.allow = resultSet->getBoolean("allow");
     domain.deny = resultSet->getBoolean("deny");
     domain.ignore = resultSet->getBoolean("ignore");
+    domain.redirect = std::string(resultSet->getString("redirect"));
     domains[domain.host] = domain;
   }
 
@@ -75,10 +76,25 @@ void JaxModel::prepare() {
   Jax::debug("Loaded %d domains", domains.size());
 }
 
-bool JaxModel::getDomain(std::string host, JaxDomain& domain) {
-  if (domains.find(host) == domains.end()) { return false; }
-  domain = domains[host];
-  return true;
+bool JaxModel::getDomain(const std::string host, JaxDomain& domain) {
+  std::deque<std::string> parts;
+  std::stringstream ss(host);
+  std::string item;
+
+  while (std::getline(ss, item, '.')) {
+    parts.push_back(item);
+  }
+
+  while (parts.size() >= 2) {
+    if (domains.find(host) != domains.end()) {
+      domain = domains[host];
+      return true;
+    }
+
+    parts.pop_front();
+  }
+
+  return false;
 }
 
 bool JaxModel::fetch(JaxClient& client) {
@@ -93,7 +109,7 @@ bool JaxModel::fetch(JaxClient& client) {
 }
 
 // TODO local is wrong word here
-bool JaxModel::fetchIPv6(std::string local) {
+bool JaxModel::fetchIPv6(const std::string local) {
   int now = (int)time(NULL);
   auto entry = ipv6cache.find(local);
 
@@ -137,7 +153,7 @@ bool JaxModel::fetchIPv6(std::string local) {
   return true;
 }
 
-bool JaxModel::fetchIPv4(std::string local, std::string remote) {
+bool JaxModel::fetchIPv4(const std::string local, const std::string remote) {
   // TODO poor mans way of making 2 strings into one key for now
   std::string key = local + "\n" + remote;
 

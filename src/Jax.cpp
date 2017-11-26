@@ -17,21 +17,16 @@ std::runtime_error Jax::socketError(std::string reason) {
   return std::runtime_error(std::string(buffer));
 }
 
-// http://stackoverflow.com/a/236803/226526
-template<typename Out>
-void Jax::split(const std::string& s, char delim, Out result) {
-    std::stringstream ss;
-    ss.str(s);
-    std::string item;
-    while (std::getline(ss, item, delim)) {
-        *(result++) = item;
-    }
-}
-
 std::vector<std::string> Jax::split(const std::string& s, char delim) {
-    std::vector<std::string> elems;
-    split(s, delim, std::back_inserter(elems));
-    return elems;
+  std::vector<std::string> elems;
+  std::stringstream ss(s);
+  std::string item;
+
+  while (std::getline(ss, item, delim)) {
+    elems.push_back(item);
+  }
+
+  return elems;
 }
 
 std::string Jax::toString(struct in6_addr& addr) {
@@ -64,11 +59,4 @@ std::string Jax::convertFakeIPv6(std::string s) {
 
 std::vector<char> Jax::toVector(std::string s) {
   return std::vector<char>(s.begin(), s.end());
-}
-
-std::string Jax::toTopLevel(std::string s) {
-  std::vector<std::string> parts = Jax::split(s, '.');
-  if (parts.size() < 2) { return s; }
-  parts = std::vector<std::string>(parts.end() - 2, parts.end());
-  return Jax::toString(parts, ".");
 }

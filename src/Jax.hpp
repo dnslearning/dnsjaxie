@@ -10,6 +10,7 @@
 #include <list>
 #include <unordered_map>
 #include <unordered_set>
+#include <deque>
 #include <vector>
 #include <iterator>
 #include <fstream>
@@ -45,9 +46,7 @@ class Jax {
 public:
   static std::runtime_error socketError(std::string reason);
   static void debug(const char *format, ...);
-
-  template<typename Out>
-  static void split(const std::string& s, char delim, Out result);
+  
   static std::vector<std::string> split(const std::string& s, char delim);
   static std::string toString(struct in6_addr& addr);
   static std::string toString(std::vector<std::string>& parts, const char *delim);
@@ -55,7 +54,6 @@ public:
   static bool isFakeIPv6(std::string s);
   static std::string convertFakeIPv6(std::string s);
   static std::vector<char> toVector(std::string s);
-  static std::string toTopLevel(std::string s);
 };
 
 struct JaxDomain {
@@ -63,6 +61,7 @@ struct JaxDomain {
   bool allow;
   bool deny;
   bool ignore;
+  std::string redirect;
 };
 
 typedef class App App;

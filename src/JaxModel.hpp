@@ -32,10 +32,10 @@ public:
   int deviceId;
 
   void prepare();
-  bool getDomain(std::string host, JaxDomain& domain);
+  bool getDomain(const std::string host, JaxDomain& domain);
   bool fetch(JaxClient& client);
-  bool fetchIPv6(std::string local);
-  bool fetchIPv4(std::string local, std::string remote);
+  bool fetchIPv6(const std::string local);
+  bool fetchIPv4(const std::string local, const std::string remote);
   void insertActivity(int id, bool learnMode);
   void insertTimeline(int id, std::string domain);
 };
