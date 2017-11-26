@@ -45,7 +45,7 @@ void App::configure() {
   };
 }
 
-void App::configure(std::string key, std::string value) {
+void App::configure(const std::string key, const std::string value) {
   if (key.empty() || key[0] == '#') {
     // Skip  a comment or empty line
   } else if (key == "dbuser") {
