@@ -86,7 +86,9 @@ bool JaxModel::getDomain(const std::string host, JaxDomain& domain) {
   }
 
   while (parts.size() >= 2) {
-    if (domains.find(host) != domains.end()) {
+    std::string subdomain = Jax::join(parts, ".");
+
+    if (domains.find(subdomain) != domains.end()) {
       domain = domains[host];
       return true;
     }
@@ -225,7 +227,7 @@ void JaxModel::insertTimeline(int id, std::string domain) {
   std::vector<std::string> parts = Jax::split(domain, '.');
   if (parts.size() < 2) { return; }
   parts = std::vector<std::string>(parts.end() - 2, parts.end());
-  domain = Jax::toString(parts, ".");
+  domain = Jax::join(parts, ".");
   prepare();
   sqlInsertTimeline->setInt(1, id);
   sqlInsertTimeline->setString(2, domain);

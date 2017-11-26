@@ -36,14 +36,6 @@ std::string Jax::toString(struct in6_addr& addr) {
   return std::string(buffer);
 }
 
-std::string Jax::toString(std::vector<std::string>& parts, const char *delim) {
-  std::ostringstream joined;
-  std::copy(parts.begin(), parts.end(), std::ostream_iterator<std::string>(joined, delim));
-  std::string s = joined.str();
-  s.pop_back();
-  return s;
-}
-
 std::string Jax::toString(std::vector<char>& v) {
   return std::string(v.begin(), v.end());
 }
@@ -59,4 +51,20 @@ std::string Jax::convertFakeIPv6(std::string s) {
 
 std::vector<char> Jax::toVector(std::string s) {
   return std::vector<char>(s.begin(), s.end());
+}
+
+std::string Jax::join(const std::vector<std::string>& parts, const char *delim) {
+  std::ostringstream joined;
+  std::copy(parts.begin(), parts.end(), std::ostream_iterator<std::string>(joined, delim));
+  std::string s = joined.str();
+  s.pop_back();
+  return s;
+}
+
+std::string Jax::join(const std::deque<std::string>& parts, const char *delim) {
+  std::ostringstream joined;
+  std::copy(parts.begin(), parts.end(), std::ostream_iterator<std::string>(joined, delim));
+  std::string s = joined.str();
+  s.pop_back();
+  return s;
 }
