@@ -63,6 +63,7 @@ struct JaxDomain {
   bool deny;
   bool ignore;
   std::string redirect;
+  int group;
 };
 
 typedef class App App;
