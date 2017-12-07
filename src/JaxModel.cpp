@@ -89,7 +89,7 @@ bool JaxModel::getDomain(const std::string host, JaxDomain& domain) {
     std::string subdomain = Jax::join(parts, ".");
 
     if (domains.find(subdomain) != domains.end()) {
-      domain = domains[host];
+      domain = domains[subdomain];
       return true;
     }
 
