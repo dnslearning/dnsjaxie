@@ -23,13 +23,13 @@ void JaxModel::prepare() {
   //}
 
   prepareSql(sqlFetchIPv6,
-    "select `id`, `study` "
+    "select `id`, `study`, `device`.`blockads` "
     "from `device` where (`ipv6` = ?) "
     "limit 1"
   );
 
   prepareSql(sqlFetchIPv4,
-    "select `device`.`id`, `device`.`study` "
+    "select `device`.`id`, `device`.`study`, `device`.`blockads` "
     "from `ipv4` "
     "join `device` on (`ipv4`.`device_id` = `device`.`id`) "
     "where (`ipv4`.`local` = ?) and (`ipv4`.`remote` = ?)"
@@ -69,6 +69,7 @@ void JaxModel::prepare() {
     domain.deny = resultSet->getBoolean("deny");
     domain.ignore = resultSet->getBoolean("ignore");
     domain.redirect = std::string(resultSet->getString("redirect"));
+    domain.group = resultSet->getInt("group");
     domains[domain.host] = domain;
   }
 
@@ -99,40 +100,25 @@ bool JaxModel::getDomain(const std::string host, JaxDomain& domain) {
   return false;
 }
 
-bool JaxModel::fetch(JaxClient& client) {
+bool JaxModel::fetch(JaxClient& client, JaxDevice& device) {
   prepare();
   Jax::debug("Looking up IP %s from %s", client.local.c_str(), client.remote.c_str());
 
   if (client.ipv4) {
-    return fetchIPv4(client.local, client.remote);
+    return fetchIPv4(client.local, client.remote, device);
   } else {
-    return fetchIPv6(client.local);
+    return fetchIPv6(client.local, device);
   }
 }
 
-// TODO local is wrong word here
-bool JaxModel::fetchIPv6(const std::string local) {
-  int now = (int)time(NULL);
-  auto entry = ipv6cache.find(local);
-
-  if (entry != ipv6cache.end()) {
-    struct device_t device = entry->second;
-    int age = now - device.time;
-
-    if (age < 15) {
-      deviceId = device.id;
-      learnMode = device.study;
-      return true;
-    }
+bool JaxModel::readDevice(JaxDevice& device, sql::PreparedStatement *statement) {
+  if (!statement) {
+    throw std::runtime_error("Empty statement encountered");
+  } else if (!statement->execute()) {
+    throw std::runtime_error("Unable to execute statement");
   }
 
-  sqlFetchIPv6->setString(1, local);
-
-  if (!sqlFetchIPv6->execute()) {
-    return false;
-  }
-
-  sql::ResultSet *results = sqlFetchIPv6->getResultSet();
+  sql::ResultSet *results = statement->getResultSet();
 
   if (!results) {
     return false;
@@ -141,83 +127,83 @@ bool JaxModel::fetchIPv6(const std::string local) {
     return false;
   }
 
-  deviceId = results->getInt(1);
-  learnMode = results->getInt(2);
+  device.time = (int)time(NULL);
+  device.id = results->getInt("id");
+  device.study = results->getInt("study");
+  device.blockads = results->getInt("blockads");
+  device.lastActivity = 0;
+  deviceCache[device.id] = device;
   delete results;
-
-  // Save into cache
-  device_t cache = {};
-  cache.id = deviceId;
-  cache.study = learnMode;
-  cache.time = (int)time(NULL);
-  ipv6cache[local] = cache;
-
   return true;
 }
 
-bool JaxModel::fetchIPv4(const std::string local, const std::string remote) {
-  // TODO poor mans way of making 2 strings into one key for now
+bool JaxModel::fetchIPv6(const std::string address, JaxDevice& device) {
+  int now = (int)time(NULL);
+  auto idEntry = ipv6cache.find(address);
+
+  if (idEntry != ipv6cache.end()) {
+    int id = idEntry->second;
+    auto deviceEntry = deviceCache.find(id);
+
+    if (deviceEntry != deviceCache.end()) {
+      auto cached = deviceEntry->second;
+      int age = now - cached.time;
+
+      if (age < 15) {
+        device = cached;
+        return true;
+      }
+    }
+  }
+
+  sqlFetchIPv6->setString(1, address);
+  return readDevice(device, sqlFetchIPv6);
+}
+
+bool JaxModel::fetchIPv4(const std::string local, const std::string remote, JaxDevice& device) {
+  // TODO this should be a vector of two strings
   std::string key = local + "\n" + remote;
 
   int now = (int)time(NULL);
-  auto entry = ipv4cache.find(key);
+  auto idEntry = ipv4cache.find(key);
 
-  if (entry != ipv4cache.end()) {
-    struct device_t device = entry->second;
-    int age = now - device.time;
+  if (idEntry != ipv4cache.end()) {
+    int id = idEntry->second;
+    auto deviceEntry = deviceCache.find(id);
 
-    if (age < 15) {
-      deviceId = device.id;
-      learnMode = device.study;
-      return true;
+    if (deviceEntry != deviceCache.end()) {
+      auto cached = deviceEntry->second;
+      int age = now - cached.time;
+
+      if (age < 15) {
+        device = cached;
+        return true;
+      }
     }
   }
 
   sqlFetchIPv4->setString(1, local);
   sqlFetchIPv4->setString(2, remote);
-
-  if (!sqlFetchIPv4->execute()) {
-    return false;
-  }
-
-  sql::ResultSet *results = sqlFetchIPv4->getResultSet();
-
-  if (!results) {
-    return false;
-  } else if (!results->next()) {
-    delete results;
-    return false;
-  }
-
-  deviceId = results->getInt(1);
-  learnMode = results->getInt(2);
-  delete results;
-
-  // Save into cache
-  device_t cache = {};
-  cache.id = deviceId;
-  cache.study = learnMode;
-  cache.time = (int)time(NULL);
-  ipv4cache[key] = cache;
-
-  return true;
+  return readDevice(device, sqlFetchIPv4);
 }
 
 void JaxModel::insertActivity(int id, bool learnMode) {
   prepare();
 
   int now = (int)time(NULL);
-  auto then = lastActivity.find(id);
+  auto deviceEntry = deviceCache.find(id);
 
-  if (then != lastActivity.end()) {
-    int age = now - then->second;
+  if (deviceEntry != deviceCache.end()) {
+    auto& device = deviceEntry->second;
+    int age = now - device.lastActivity;
 
     if (age < 15) {
       return;
     }
+
+    device.lastActivity = now;
   }
 
-  lastActivity[id] = now;
   sqlInsertActivity->setInt(1, id);
   sqlInsertActivity->setInt(2, learnMode ? 1 : 0);
   sqlInsertActivity->execute();

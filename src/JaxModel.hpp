@@ -2,13 +2,7 @@
 #pragma once
 
 #include "Jax.hpp"
-
-// TODO sucks this goes here instead of somewhere it belongs
-struct device_t {
-  int id;
-  bool study;
-  int time;
-};
+#include "JaxDevice.hpp"
 
 class JaxModel {
 private:
@@ -19,23 +13,23 @@ private:
   sql::PreparedStatement *sqlInsertActivity;
   sql::PreparedStatement *sqlInsertTimeline;
   sql::PreparedStatement *sqlFetchDomains;
+
+  bool readDevice(JaxDevice& device, sql::PreparedStatement *statement);
+  bool fetchIPv6(const std::string address, JaxDevice& device);
+  bool fetchIPv4(const std::string local, const std::string remote, JaxDevice& device);
 public:
   std::string name = "dnsjaxie";
   std::string user = "root";
   std::string pass = "";
   std::string host = "localhost";
   std::unordered_map<std::string, JaxDomain> domains;
-  std::unordered_map<std::string, struct device_t> ipv4cache;
-  std::unordered_map<std::string, struct device_t> ipv6cache;
-  std::unordered_map<int, int> lastActivity;
-  bool learnMode;
-  int deviceId;
+  std::unordered_map<std::string, int> ipv4cache;
+  std::unordered_map<std::string, int> ipv6cache;
+  std::unordered_map<int, JaxDevice> deviceCache;
 
   void prepare();
   bool getDomain(const std::string host, JaxDomain& domain);
-  bool fetch(JaxClient& client);
-  bool fetchIPv6(const std::string local);
-  bool fetchIPv4(const std::string local, const std::string remote);
+  bool fetch(JaxClient& client, JaxDevice& device);
   void insertActivity(int id, bool learnMode);
   void insertTimeline(int id, std::string domain);
 };

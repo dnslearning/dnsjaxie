@@ -180,8 +180,10 @@ void JaxServer::recvQuestion(
     client.remote = Jax::convertFakeIPv6(client.remote);
   }
 
+  JaxDevice device;
+
   // Cannot identify device
-  if (!model.fetch(client)) {
+  if (!model.fetch(client, device)) {
     sendFakeResponse(client);
     return;
   }
@@ -195,7 +197,7 @@ void JaxServer::recvQuestion(
     if (model.getDomain(q.domain, domain)) {
       if (domain.allow) {
         allowed = true;
-      } else if (domain.deny) {
+      } else if (domain.deny || (domain.group && device.blockads)) {
         sendFakeResponse(client);
         return;
       } else if (domain.redirect.length() > 0) {
@@ -206,10 +208,10 @@ void JaxServer::recvQuestion(
   }
 
   // Always log activity for identified devices
-  model.insertActivity(model.deviceId, model.learnMode);
+  model.insertActivity(device.id, device.study);
 
   // Attempt to access site not explicitly allowed in study mode
-  if (model.learnMode > 0 && !allowed) {
+  if (device.study > 0 && !allowed) {
     sendFakeResponse(client);
     return;
   }
@@ -217,7 +219,7 @@ void JaxServer::recvQuestion(
   for (auto q : parser.questions) {
     // add to queue here
     timelineQueue.insert({
-      id: model.deviceId,
+      id: device.id,
       domain: q.domain
     });
   }
