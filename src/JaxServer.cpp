@@ -200,7 +200,7 @@ void JaxServer::recvQuestion(
       } else if (domain.deny || (domain.group && device.blockads)) {
         sendFakeResponse(client);
         return;
-      } else if (domain.redirect.length() > 0) {
+      } else if (domain.redirect.length() > 0 && device.youtubeRestrict) {
         sendRedirectResponse(client, domain.redirect);
         return;
       }

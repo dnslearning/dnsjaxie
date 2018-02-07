@@ -9,4 +9,5 @@ struct JaxDevice {
   bool study;
   int blockads;
   int lastActivity;
+  bool youtubeRestrict;
 };

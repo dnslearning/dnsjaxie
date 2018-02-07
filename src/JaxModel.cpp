@@ -23,13 +23,13 @@ void JaxModel::prepare() {
   //}
 
   prepareSql(sqlFetchIPv6,
-    "select `id`, `study`, `device`.`blockads` "
+    "select `id`, `study`, `device`.`blockads`, `device`.`youtube_restrict` "
     "from `device` where (`ipv6` = ?) "
     "limit 1"
   );
 
   prepareSql(sqlFetchIPv4,
-    "select `device`.`id`, `device`.`study`, `device`.`blockads` "
+    "select `device`.`id`, `device`.`study`, `device`.`blockads`, `device`.`youtube_restrict` "
     "from `ipv4` "
     "join `device` on (`ipv4`.`device_id` = `device`.`id`) "
     "where (`ipv4`.`local` = ?) and (`ipv4`.`remote` = ?)"
@@ -131,6 +131,7 @@ bool JaxModel::readDevice(JaxDevice& device, sql::PreparedStatement *statement) 
   device.id = results->getInt("id");
   device.study = results->getInt("study");
   device.blockads = results->getInt("blockads");
+  device.youtubeRestrict = results->getInt("youtube_restrict");
   device.lastActivity = 0;
   deviceCache[device.id] = device;
   delete results;
