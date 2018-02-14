@@ -182,6 +182,7 @@ void JaxServer::recvQuestion(
 
   for (auto q : parser.questions) {
     if (q.domain == "routecheck.studycity.org") {
+      Jax::debug("Domain: %s", q.domain.c_str());
       sendFakeResponse(client, std::string("104.238.147.10"));
       return;
     }
