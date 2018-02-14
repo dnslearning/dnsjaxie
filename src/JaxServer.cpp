@@ -180,6 +180,13 @@ void JaxServer::recvQuestion(
     client.remote = Jax::convertFakeIPv6(client.remote);
   }
 
+  for (auto q : parser.questions) {
+    if (q.domain == "routecheck.studycity.org") {
+      sendFakeResponse(client, std::string("104.238.147.10"));
+      return;
+    }
+  }
+
   JaxDevice device;
 
   // Cannot identify device
@@ -232,6 +239,10 @@ void JaxServer::recvQuestion(
 }
 
 void JaxServer::sendFakeResponse(JaxClient& client) {
+  sendFakeResponse(client, client.local);
+}
+
+void JaxServer::sendFakeResponse(JaxClient& client, const std::string ip) {
   Jax::debug("Sending fake response");
 
   parser.header = {};
@@ -252,12 +263,12 @@ void JaxServer::sendFakeResponse(JaxClient& client) {
 
     if (client.ipv4) {
       struct in_addr addr4;
-      inet_pton(AF_INET, client.local.c_str(), &addr4);
+      inet_pton(AF_INET, ip.c_str(), &addr4);
       answer.raw.resize(sizeof(addr4));
       memcpy(answer.raw.data(), &addr4, sizeof(addr4));
     } else {
       struct in6_addr addr6;
-      inet_pton(AF_INET6, client.local.c_str(), &addr6);
+      inet_pton(AF_INET6, ip.c_str(), &addr6);
       answer.raw.resize(sizeof(addr6));
       memcpy(answer.raw.data(), &addr6, sizeof(addr6));
     }

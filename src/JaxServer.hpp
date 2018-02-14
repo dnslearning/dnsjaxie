@@ -54,6 +54,7 @@ public:
   void sendResponse(JaxClient& client, JaxPacket& packet);
   void forwardRequest(JaxClient& client, JaxPacket& packet);
   void sendFakeResponse(JaxClient& client);
+  void sendFakeResponse(JaxClient& client, const std::string ip);
   void sendRedirectResponse(JaxClient& client, const std::string redirect);
   bool isAccessEnabled(JaxClient& client);
   int createOutboundSocket();
