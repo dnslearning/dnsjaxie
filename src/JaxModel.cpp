@@ -158,7 +158,13 @@ bool JaxModel::fetchIPv6(const std::string address, JaxDevice& device) {
   }
 
   sqlFetchIPv6->setString(1, address);
-  return readDevice(device, sqlFetchIPv6);
+
+  if (!readDevice(device, sqlFetchIPv6)) {
+    return false;
+  }
+
+  ipv6cache[address] = device.id;
+  return true;
 }
 
 bool JaxModel::fetchIPv4(const std::string local, const std::string remote, JaxDevice& device) {
@@ -185,7 +191,13 @@ bool JaxModel::fetchIPv4(const std::string local, const std::string remote, JaxD
 
   sqlFetchIPv4->setString(1, local);
   sqlFetchIPv4->setString(2, remote);
-  return readDevice(device, sqlFetchIPv4);
+
+  if (!readDevice(device, sqlFetchIPv4)) {
+    return false;
+  }
+
+  ipv4cache[key] = device.id;
+  return true;
 }
 
 void JaxModel::insertActivity(int id, bool learnMode) {
